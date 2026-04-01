@@ -19,6 +19,23 @@ import { Suspenders } from './cables/Suspenders';
 import { CableSaddle } from './cables/CableSaddle';
 import { CableAnchorage } from './cables/CableAnchorage';
 
+// Deck (D1–D7)
+import { DeckSurface } from './deck/DeckSurface';
+import { StiffeningTruss } from './deck/StiffeningTruss';
+import { FloorSystem } from './deck/FloorSystem';
+import { RoadSurface } from './deck/RoadSurface';
+import { SidewalkRailing } from './deck/SidewalkRailing';
+import { LightStandards } from './deck/LightStandards';
+import { DrainageUtilities } from './deck/DrainageUtilities';
+import { ExpansionJoints } from './deck/ExpansionJoints';
+
+// Approaches (A1–A5)
+import { FortPointArch } from './approaches/FortPointArch';
+import { SFAnchorage } from './approaches/SFAnchorage';
+import { MarinAnchorage } from './approaches/MarinAnchorage';
+import { TollPlaza } from './approaches/TollPlaza';
+import { ApproachViaducts } from './approaches/ApproachViaducts';
+
 export class BridgeAssembler extends BaseLandmark {
   private parts: BridgePart[] = [];
   private updatableParts: BridgePart[] = [];
@@ -49,6 +66,23 @@ export class BridgeAssembler extends BaseLandmark {
     this.registerPart(new Suspenders());
     this.registerPart(new CableSaddle());
     this.registerPart(new CableAnchorage());
+    this.registerPart(new DeckSurface());
+
+    // Deck system (D1–D7)
+    this.registerPart(new StiffeningTruss());
+    this.registerPart(new FloorSystem());
+    this.registerPart(new RoadSurface());
+    this.registerPart(new SidewalkRailing());
+    this.registerPart(new LightStandards());
+    this.registerPart(new DrainageUtilities());
+    this.registerPart(new ExpansionJoints());
+
+    // Approaches (A1–A5)
+    this.registerPart(new FortPointArch());
+    this.registerPart(new SFAnchorage());
+    this.registerPart(new MarinAnchorage());
+    this.registerPart(new TollPlaza());
+    this.registerPart(new ApproachViaducts());
 
     // Phase 1: Geometry
     for (const p of this.parts) {
