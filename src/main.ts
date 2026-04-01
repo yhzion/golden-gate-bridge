@@ -8,7 +8,7 @@ import { SkyController } from '@/world/SkyController';
 import { createWater } from '@/world/Water';
 import { createLighting } from '@/world/Lighting';
 import { createTerrain } from '@/world/TerrainGenerator';
-import { GoldenGateBridge } from '@/landmarks/GoldenGateBridge';
+import { BridgeAssembler } from '@/landmarks/bridge/BridgeAssembler';
 import { landmarkRegistry } from '@/landmarks/index';
 import { FlightCamera } from '@/camera/FlightCamera';
 import { VehicleSystem } from '@/traffic/VehicleSystem';
@@ -46,7 +46,7 @@ function init() {
   prog.style.width = '55%';
 
   // Landmarks
-  const ggb = new GoldenGateBridge(mats);
+  const ggb = new BridgeAssembler(mats);
   landmarkRegistry.register(ggb);
   landmarkRegistry.buildAll();
   landmarkRegistry.addAllTo(sm.scene);
@@ -125,6 +125,9 @@ function init() {
 
     const nightFactor = 1 - Math.min(1, Math.max(0, timeState.sunIntensity / 0.8));
     nightSky.update(nightFactor, elapsed);
+
+    // Bridge updatable parts
+    ggb.update(dt, elapsed);
 
     // Camera + entities
     flight.update(dt);
