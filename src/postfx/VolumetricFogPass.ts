@@ -9,7 +9,7 @@ const VolumetricFogShader = {
     tDepth: { value: null as THREE.Texture | null },
     cameraNear: { value: 0.5 },
     cameraFar: { value: 80000 },
-    cameraPosition: { value: new THREE.Vector3() },
+    camPos: { value: new THREE.Vector3() },
     inverseProjection: { value: new THREE.Matrix4() },
     inverseView: { value: new THREE.Matrix4() },
     lightPositions: { value: new Array(MAX_LIGHTS).fill(null).map(() => new THREE.Vector3()) },
@@ -33,7 +33,7 @@ const VolumetricFogShader = {
     uniform sampler2D tDepth;
     uniform float cameraNear;
     uniform float cameraFar;
-    uniform vec3 cameraPosition;
+    uniform vec3 camPos;
     uniform mat4 inverseProjection;
     uniform mat4 inverseView;
     uniform vec3 lightPositions[${MAX_LIGHTS}];
@@ -78,8 +78,8 @@ const VolumetricFogShader = {
       }
 
       vec3 worldPos = worldPosFromDepth(vUv, depth);
-      vec3 rayDir = normalize(worldPos - cameraPosition);
-      float totalDist = length(worldPos - cameraPosition);
+      vec3 rayDir = normalize(worldPos - camPos);
+      float totalDist = length(worldPos - camPos);
 
       float dither = hash(vUv * vec2(1920.0, 1080.0) + time * 100.0);
 
@@ -90,7 +90,7 @@ const VolumetricFogShader = {
 
       for (int i = 0; i < STEPS; i++) {
         float t = (float(i) + dither) * stepSize;
-        vec3 samplePos = cameraPosition + rayDir * t;
+        vec3 samplePos = camPos + rayDir * t;
 
         float extinction = fogDensity * stepSize;
         transmittance *= exp(-extinction);
@@ -172,7 +172,7 @@ export class VolumetricFogPass extends Pass {
     u['tDiffuse'].value = readBuffer.texture;
     u['cameraNear'].value = (this.camera as THREE.PerspectiveCamera).near;
     u['cameraFar'].value = (this.camera as THREE.PerspectiveCamera).far;
-    (u['cameraPosition'].value as THREE.Vector3).copy(this.camera.position);
+    (u['camPos'].value as THREE.Vector3).copy(this.camera.position);
     (u['inverseProjection'].value as THREE.Matrix4).copy(this.camera.projectionMatrixInverse);
     (u['inverseView'].value as THREE.Matrix4).copy(this.camera.matrixWorld);
     u['time'].value = performance.now() * 0.001;
