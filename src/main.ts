@@ -82,6 +82,7 @@ function init() {
 
   // Drive mode
   const driveMode = new DriveMode(sm.scene, sm.camera, mats);
+  driveMode.setBirdSystem(birds);
   driveMode.load(); // async, non-blocking
 
   const driveBtn = document.getElementById('driveBtn')!;

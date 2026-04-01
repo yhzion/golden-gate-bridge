@@ -64,4 +64,21 @@ export class BirdSystem {
     }
     this.mesh.instanceMatrix.needsUpdate = true;
   }
+
+  /** Reposition all bird orbits around a new center Z */
+  repositionAround(centerZ: number): void {
+    for (const b of this.data) {
+      b.cz = centerZ + (Math.random() - 0.5) * 600;
+      b.cx = (Math.random() - 0.5) * 400;
+      b.height = 80 + Math.random() * 60;
+      b.radius = 30 + Math.random() * 50;
+    }
+  }
+
+  /** Apply recentering offset */
+  applyRecenter(shift: number): void {
+    for (const b of this.data) {
+      b.cz += shift;
+    }
+  }
 }

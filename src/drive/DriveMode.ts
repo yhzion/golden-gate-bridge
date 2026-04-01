@@ -6,6 +6,7 @@ import { NPCVehicleSystem } from '../traffic/NPCVehicleSystem';
 import { BoatSystem } from '../traffic/BoatSystem';
 import { DriveHUD } from '../ui/DriveHUD';
 import { DRIVE } from '../config/bridge';
+import type { BirdSystem } from '../traffic/BirdSystem';
 import type { BridgeMaterials } from '../world/Materials';
 import type { TimeState } from '../atmosphere/TimeOfDay';
 
@@ -16,6 +17,9 @@ export class DriveMode {
   private npcVehicles: NPCVehicleSystem;
   private boats: BoatSystem;
   private hud: DriveHUD;
+
+  private birdSystem: BirdSystem | null = null;
+  private birdRepositionTimer = 0;
 
   private active = false;
   private originalBridgeGroup: THREE.Group | null = null;
@@ -44,6 +48,11 @@ export class DriveMode {
 
   isActive(): boolean {
     return this.active;
+  }
+
+  /** Set the bird system reference for drive mode integration */
+  setBirdSystem(birds: BirdSystem): void {
+    this.birdSystem = birds;
   }
 
   enter(bridgeGroup: THREE.Group, cityscapeGroup?: THREE.Group): void {
@@ -144,6 +153,7 @@ export class DriveMode {
       this.playerCar.applyRecenter(recenterShift);
       this.npcVehicles.applyRecenter(recenterShift);
       this.boats.applyRecenter(recenterShift);
+      this.birdSystem?.applyRecenter(recenterShift);
     }
 
     // Update camera
@@ -152,6 +162,16 @@ export class DriveMode {
     // Update NPC systems
     this.npcVehicles.update(dt, this.playerCar.z, nightFactor);
     this.boats.update(dt, elapsed, this.playerCar.z, nightFactor);
+
+    // Reposition birds periodically to keep them near the player
+    if (this.birdSystem) {
+      this.birdRepositionTimer -= dt;
+      if (this.birdRepositionTimer <= 0) {
+        this.birdSystem.repositionAround(this.playerCar.z);
+        this.birdRepositionTimer = 30;
+      }
+      this.birdSystem.update(dt, elapsed);
+    }
 
     // Update HUD
     this.hud.update(DRIVE.speed, this.driverCamera.viewMode);
