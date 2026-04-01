@@ -38,7 +38,7 @@ function init() {
   prog.style.width = '35%';
 
   skyCtrl.updateSun(12, 235, water);
-  const sunLight = createLighting(sm.scene);
+  const { sun: sunLight, hemisphere } = createLighting(sm.scene);
   prog.style.width = '45%';
 
   // Terrain
@@ -66,7 +66,7 @@ function init() {
   // Atmosphere
   const timeOfDay = new TimeOfDay(17);
   const weatherSystem = new WeatherSystem();
-  const matUpdater = new MaterialUpdater(sm, water, skyCtrl.sky, sunLight);
+  const matUpdater = new MaterialUpdater(sm, water, skyCtrl.sky, sunLight, hemisphere);
   const nightSky = new NightSky();
   sm.scene.add(nightSky.mesh);
   prog.style.width = '80%';
