@@ -32,6 +32,9 @@ export class InputManager {
   private canvas: HTMLCanvasElement;
   private onViewpoint: ((n: number) => void) | null = null;
   private onToggleFog: (() => void) | null = null;
+  private onLightingKey: ((key: 'L' | 'V' | 'G') => void) | null = null;
+  private hideTimer: number | null = null;
+  private readonly HIDE_DELAY = 3000;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -52,11 +55,18 @@ export class InputManager {
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('wheel', this.onWheel, { passive: true });
+
+    this.resetHideTimer();
   }
 
-  setCallbacks(onViewpoint: (n: number) => void, onToggleFog: () => void) {
+  setCallbacks(
+    onViewpoint: (n: number) => void,
+    onToggleFog: () => void,
+    onLightingKey?: (key: 'L' | 'V' | 'G') => void,
+  ) {
     this.onViewpoint = onViewpoint;
     this.onToggleFog = onToggleFog;
+    this.onLightingKey = onLightingKey ?? null;
   }
 
   private onClick = () => {
@@ -65,16 +75,41 @@ export class InputManager {
 
   private onPointerLockChange = () => {
     this.ctrl.locked = document.pointerLockElement === this.canvas;
-    const overlay = document.getElementById('overlay');
-    const hud = document.getElementById('hud');
-    if (overlay) {
-      overlay.style.opacity = this.ctrl.locked ? '0' : '1';
-      overlay.style.pointerEvents = this.ctrl.locked ? 'none' : 'auto';
-    }
-    if (hud) hud.style.opacity = this.ctrl.locked ? '1' : '0';
+    this.showPanels();
+    this.resetHideTimer();
   };
 
+  private showPanels() {
+    const overlay = document.getElementById('overlay');
+    const hud = document.getElementById('hud');
+    if (this.ctrl.locked) {
+      if (overlay) { overlay.style.opacity = '0'; overlay.style.pointerEvents = 'none'; }
+      if (hud) hud.style.opacity = '1';
+    } else {
+      if (overlay) { overlay.style.opacity = '1'; overlay.style.pointerEvents = 'auto'; }
+      if (hud) hud.style.opacity = '0';
+    }
+  }
+
+  private hidePanels() {
+    const overlay = document.getElementById('overlay');
+    const hud = document.getElementById('hud');
+    if (this.ctrl.locked) {
+      if (hud) hud.style.opacity = '0';
+    } else {
+      if (overlay) { overlay.style.opacity = '0'; overlay.style.pointerEvents = 'none'; }
+    }
+  }
+
+  private resetHideTimer() {
+    if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
+    this.hideTimer = window.setTimeout(() => this.hidePanels(), this.HIDE_DELAY);
+  }
+
   private onMouseMove = (e: MouseEvent) => {
+    this.showPanels();
+    this.resetHideTimer();
+
     if (!this.ctrl.locked) return;
     this.ctrl.euler.y -= e.movementX * this.ctrl.sens;
     this.ctrl.euler.x -= e.movementY * this.ctrl.sens;
@@ -88,6 +123,9 @@ export class InputManager {
       e.preventDefault();
     }
     if (e.code === 'KeyF') this.onToggleFog?.();
+    if (e.code === 'KeyL') this.onLightingKey?.('L');
+    if (e.code === 'KeyV') this.onLightingKey?.('V');
+    if (e.code === 'KeyG') this.onLightingKey?.('G');
     if (e.code >= 'Digit1' && e.code <= 'Digit9') {
       this.onViewpoint?.(+e.code.slice(5));
     }
@@ -104,6 +142,7 @@ export class InputManager {
   };
 
   dispose() {
+    if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
     this.canvas.removeEventListener('click', this.onClick);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     document.removeEventListener('mousemove', this.onMouseMove);

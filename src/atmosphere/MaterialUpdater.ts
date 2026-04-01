@@ -147,14 +147,7 @@ export class MaterialUpdater {
         );
       }
 
-      if (entry.isAviation) {
-        // Aviation red beacons: brighter at night
-        entry.mat.emissiveIntensity = THREE.MathUtils.lerp(
-          entry.baseEmissiveIntensity * 0.5,
-          entry.baseEmissiveIntensity * 3.0,
-          nightFactor,
-        );
-      }
+      // Aviation beacons are now controlled by SafetyLights strobe system
     }
   }
 }

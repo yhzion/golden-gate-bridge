@@ -4,6 +4,12 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { VolumetricFogPass } from './VolumetricFogPass';
+import { GodRaysPass } from './GodRaysPass';
+import { LensFlarePass } from './LensFlarePass';
+import type { LightingManager } from '@/lighting/LightingManager';
+import type { TimeState } from '@/atmosphere/TimeOfDay';
+import type { WeatherState } from '@/atmosphere/WeatherSystem';
 
 const ColorGradeShader = {
   uniforms: { tDiffuse: { value: null } },
@@ -19,9 +25,7 @@ const ColorGradeShader = {
     varying vec2 vUv;
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
-      // Subtle contrast only — no color shift
       c.rgb = (c.rgb - 0.5) * 1.02 + 0.5;
-      // Vignette
       vec2 uv = vUv * 2.0 - 1.0;
       float vig = 1.0 - dot(uv * 0.4, uv * 0.4);
       c.rgb *= smoothstep(0.0, 1.0, vig);
@@ -32,25 +36,159 @@ const ColorGradeShader = {
 
 export class PostFXPipeline {
   composer: EffectComposer;
+  bloom: UnrealBloomPass;
+  volumetricFog: VolumetricFogPass;
+  godRays: GodRaysPass;
+  lensFlare: LensFlarePass;
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+  private renderer: THREE.WebGLRenderer;
+  private camera: THREE.Camera;
+  private lightingManager: LightingManager | null;
+  private depthRenderTarget: THREE.WebGLRenderTarget;
+
+  constructor(
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.Camera,
+    lightingManager: LightingManager | null = null,
+  ) {
+    this.renderer = renderer;
+    this.camera = camera;
+    this.lightingManager = lightingManager;
+
+    const depthTex = new THREE.DepthTexture(innerWidth, innerHeight);
+    depthTex.format = THREE.DepthFormat;
+    depthTex.type = THREE.UnsignedIntType;
+    this.depthRenderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
+      depthTexture: depthTex,
+      depthBuffer: true,
+    });
+
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, camera));
 
-    const bloom = new UnrealBloomPass(
+    this.volumetricFog = new VolumetricFogPass(renderer, camera);
+    this.volumetricFog.setDepthTexture(depthTex);
+    this.volumetricFog.enabled = false;
+    this.composer.addPass(this.volumetricFog);
+
+    this.godRays = new GodRaysPass();
+    this.godRays.enabled = false;
+    this.composer.addPass(this.godRays);
+
+    this.bloom = new UnrealBloomPass(
       new THREE.Vector2(innerWidth, innerHeight),
-      0.08, 0.3, 0.95, // Minimal bloom: strength, radius, threshold
+      0.08, 0.3, 0.95,
     );
-    this.composer.addPass(bloom);
+    this.composer.addPass(this.bloom);
+
+    this.lensFlare = new LensFlarePass();
+    this.lensFlare.enabled = false;
+    this.composer.addPass(this.lensFlare);
+
     this.composer.addPass(new ShaderPass(ColorGradeShader));
     this.composer.addPass(new OutputPass());
   }
 
-  render() {
+  updateLighting(timeState: TimeState, weatherState: WeatherState): void {
+    if (!this.lightingManager) return;
+
+    const nightFactor = 1 - THREE.MathUtils.clamp(timeState.sunIntensity / 0.8, 0, 1);
+    const tier = this.lightingManager.qualityTier.getCurrentTier();
+
+    const fogActive = weatherState.fogMultiplier > 2;
+    if (nightFactor > 0.7 && fogActive) {
+      this.bloom.threshold = 0.2;
+      this.bloom.strength = 1.2;
+    } else if (nightFactor > 0.5) {
+      this.bloom.threshold = 0.4;
+      this.bloom.strength = 0.8;
+    } else if (nightFactor > 0.2) {
+      this.bloom.threshold = 0.6;
+      this.bloom.strength = 0.5;
+    } else {
+      this.bloom.threshold = 0.9;
+      this.bloom.strength = 0.3;
+    }
+
+    const volEnabled = this.volumetricFog.isVolumetricEnabled()
+      && nightFactor > 0.2
+      && tier !== 'low';
+    this.volumetricFog.enabled = volEnabled;
+
+    if (volEnabled) {
+      const positions = this.lightingManager.getLightPositions();
+      const colors = this.lightingManager.getLightColors();
+      const intensities = this.lightingManager.getLightIntensities();
+      this.volumetricFog.setLights(positions, colors, intensities);
+
+      const baseDensity = timeState.fogDensity * weatherState.fogMultiplier;
+      const volDensity = baseDensity * (nightFactor > 0.5 ? 3.0 : 1.0);
+      this.volumetricFog.setFogParams(volDensity, timeState.fogColor, 0.7);
+    }
+
+    const godRayEnabled = this.godRays.isGodRaysEnabled()
+      && tier === 'high'
+      && (nightFactor > 0.5 || timeState.sunElevation < 15);
+    this.godRays.enabled = godRayEnabled;
+
+    if (godRayEnabled) {
+      if (timeState.sunElevation > 0 && nightFactor < 0.5) {
+        const sunDir = new THREE.Vector3().setFromSphericalCoords(
+          1,
+          THREE.MathUtils.degToRad(90 - timeState.sunElevation),
+          THREE.MathUtils.degToRad(timeState.sunAzimuth),
+        );
+        const sunWorldPos = sunDir.multiplyScalar(5000).add(this.camera.position);
+        this.godRays.setLightWorldPos(sunWorldPos, this.camera);
+        this.godRays.setIntensity(0.3);
+      } else if (nightFactor > 0.5 && weatherState.fogMultiplier > 2) {
+        const positions = this.lightingManager.getLightPositions();
+        if (positions.length > 0) {
+          this.godRays.setLightWorldPos(positions[0], this.camera);
+          this.godRays.setIntensity(0.8);
+        }
+      } else {
+        this.godRays.setIntensity(0);
+      }
+    }
+
+    const flareEnabled = nightFactor > 0.3 && tier !== 'low';
+    this.lensFlare.enabled = flareEnabled;
+
+    if (flareEnabled) {
+      const positions = this.lightingManager.getLightPositions();
+      const colors = this.lightingManager.getLightColors();
+      const intensities = this.lightingManager.getLightIntensities();
+      const screenPositions: THREE.Vector2[] = [];
+      const screenColors: THREE.Color[] = [];
+      const screenIntensities: number[] = [];
+
+      for (let i = 0; i < positions.length; i++) {
+        const ndc = positions[i].clone().project(this.camera);
+        if (ndc.z > 1 || Math.abs(ndc.x) > 1.2 || Math.abs(ndc.y) > 1.2) continue;
+        screenPositions.push(new THREE.Vector2(ndc.x * 0.5 + 0.5, ndc.y * 0.5 + 0.5));
+        screenColors.push(colors[i]);
+        screenIntensities.push(intensities[i] * nightFactor * 0.15);
+      }
+      this.lensFlare.setFlares(screenPositions, screenColors, screenIntensities);
+    }
+  }
+
+  render(): void {
+    if (this.volumetricFog.enabled) {
+      const currentRT = this.renderer.getRenderTarget();
+      this.renderer.setRenderTarget(this.depthRenderTarget);
+      this.renderer.render((this.composer.passes[0] as any).scene, this.camera);
+      this.renderer.setRenderTarget(currentRT);
+    }
     this.composer.render();
   }
 
-  resize() {
-    this.composer.setSize(innerWidth, innerHeight);
+  resize(): void {
+    const w = innerWidth;
+    const h = innerHeight;
+    this.composer.setSize(w, h);
+    this.depthRenderTarget.setSize(w, h);
   }
 }
