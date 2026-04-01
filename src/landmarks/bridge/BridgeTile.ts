@@ -16,12 +16,13 @@ import { createLAngleShape } from '@/world/profiles/LAngleProfile';
  *   z=0          — Tower 0 (side span start)
  *   z=343        — Tower 1 (main span start)
  *   z=343..1623  — Main span
- *   z=1623       — Tower 2 (tile boundary, shared with next tile's z=0)
+ *   z=1623       — Tile boundary (no tower — shared with next tile's z=0)
  */
 export class BridgeTile {
   readonly group = new THREE.Group();
 
   private readonly geometries: THREE.BufferGeometry[] = [];
+  private readonly localMaterials: THREE.Material[] = [];
   private readonly materials: BridgeMaterials;
 
   constructor(materials: BridgeMaterials) {
@@ -52,6 +53,11 @@ export class BridgeTile {
     }
     this.geometries.length = 0;
 
+    for (const mat of this.localMaterials) {
+      mat.dispose();
+    }
+    this.localMaterials.length = 0;
+
     this.group.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
         obj.geometry.dispose();
@@ -66,7 +72,11 @@ export class BridgeTile {
   private buildTowers(): void {
     const mats = this.materials;
 
-    for (const towerZ of TILE.towerZs) {
+    // Build only towers at index 0 and 1 (z=0 and z=343).
+    // Tower at z=1623 (TILE.towerZs[2]) is omitted because the
+    // adjacent tile's Tower0 (z=0) occupies the same world position.
+    const towerPositions = [TILE.towerZs[0], TILE.towerZs[1]];
+    for (const towerZ of towerPositions) {
       const sides = [-1, 1] as const;
 
       for (const side of sides) {
@@ -480,6 +490,7 @@ export class BridgeTile {
         roughness: 0.8,
         metalness: 0,
       });
+      this.localMaterials.push(swMat);
       const sw = new THREE.Mesh(swGeo, swMat);
       sw.position.set(
         side * (roadW / 2 + sidewalkW / 2),
@@ -504,6 +515,7 @@ export class BridgeTile {
       polygonOffset: true,
       polygonOffsetFactor: -1,
     });
+    this.localMaterials.push(markMat);
 
     const yellowMat = new THREE.MeshStandardMaterial({
       color: 0xdda800,
@@ -512,6 +524,7 @@ export class BridgeTile {
       polygonOffset: true,
       polygonOffsetFactor: -1,
     });
+    this.localMaterials.push(yellowMat);
 
     // Center double yellow (solid)
     for (const off of [-0.12, 0.12]) {
@@ -627,8 +640,8 @@ export class BridgeTile {
       botChordMesh.receiveShadow = true;
       this.group.add(botChordMesh);
 
-      // Diagonals (instanced)
-      const diagCount = panelCount * 2;
+      // Diagonals (instanced) — Warren pattern: one diagonal per panel, alternating direction
+      const diagCount = panelCount;
       const diagMesh = new THREE.InstancedMesh(diagGeo, mats.deckSteel, diagCount);
       diagMesh.castShadow = true;
       diagMesh.receiveShadow = true;
@@ -636,17 +649,10 @@ export class BridgeTile {
       let instanceIdx = 0;
       for (let i = 0; i < panelCount; i++) {
         const zPanel = i * panelLen;
-
-        // Ascending
-        dummy.position.set(sideX, deckH - trussH, zPanel);
-        dummy.rotation.set(angleAsc, 0, 0);
+        const isAscending = i % 2 === 0;
+        dummy.position.set(sideX, isAscending ? deckH - trussH : deckH, zPanel);
+        dummy.rotation.set(isAscending ? angleAsc : angleDesc, 0, 0);
         dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        diagMesh.setMatrixAt(instanceIdx++, dummy.matrix);
-
-        // Descending
-        dummy.position.set(sideX, deckH, zPanel);
-        dummy.rotation.set(angleDesc, 0, 0);
         dummy.updateMatrix();
         diagMesh.setMatrixAt(instanceIdx++, dummy.matrix);
       }
