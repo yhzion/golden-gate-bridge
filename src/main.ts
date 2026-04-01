@@ -13,7 +13,6 @@ import { landmarkRegistry } from '@/landmarks/index';
 import { FlightCamera } from '@/camera/FlightCamera';
 import { CINEMATIC_SHOTS } from '@/camera/shots';
 import { VehicleSystem } from '@/traffic/VehicleSystem';
-import { updateRetroreflection } from '@/traffic/RetroreflectionSystem';
 import { Cityscape } from '@/traffic/Cityscape';
 import { BirdSystem } from '@/traffic/BirdSystem';
 import { TimeOfDay } from '@/atmosphere/TimeOfDay';
@@ -22,6 +21,7 @@ import { MaterialUpdater } from '@/atmosphere/MaterialUpdater';
 import { LightingManager } from '@/lighting/LightingManager';
 import { HUD } from '@/ui/HUD';
 import { Clock } from '@/ui/Clock';
+import { DriveMode } from '@/drive/DriveMode';
 
 function init() {
   const prog = document.getElementById('prog') as HTMLElement;
@@ -79,6 +79,44 @@ function init() {
 
   const postfx = new PostFXPipeline(sm.renderer, sm.scene, sm.camera, lightingManager);
   window.addEventListener('resize', () => postfx.resize());
+
+  // Drive mode
+  const driveMode = new DriveMode(sm.scene, sm.camera, mats);
+  driveMode.load(); // async, non-blocking
+
+  const driveBtn = document.getElementById('driveBtn')!;
+  driveBtn.addEventListener('click', () => {
+    if (driveMode.isActive()) {
+      driveMode.exit();
+      driveBtn.textContent = 'DRIVE';
+    } else {
+      driveMode.enter(ggb.group);
+      driveBtn.textContent = 'EXIT DRIVE';
+    }
+  });
+
+  // Mouse move for drive mode
+  document.addEventListener('mousemove', (e) => {
+    if (driveMode.isActive()) {
+      driveMode.onMouseMove(e.movementX, e.movementY);
+    }
+  });
+
+  // Key handlers for drive mode
+  document.addEventListener('keydown', (e) => {
+    if (driveMode.isActive()) {
+      driveMode.onKeyDown(e.key);
+    }
+    if (e.key === 'm' || e.key === 'M') {
+      if (driveMode.isActive()) {
+        driveMode.exit();
+        driveBtn.textContent = 'DRIVE';
+      } else {
+        driveMode.enter(ggb.group);
+        driveBtn.textContent = 'EXIT DRIVE';
+      }
+    }
+  });
 
   input.setCallbacks(
     (n) => {
@@ -154,16 +192,20 @@ function init() {
     // Bridge updatable parts
     ggb.update(dt, elapsed);
 
-    flight.update(dt);
-    vehicles.update(dt);
-    cityscape.update(dt, elapsed);
     const nightFactor = 1 - Math.min(timeState.sunIntensity / 0.25, 1);
-    birds.update(dt, elapsed, nightFactor);
 
-    // Retroreflective lane markings — active only in drive mode (1st person)
-    const isDriveMode = !flight.director.isActive;
-    const hl = vehicles.getHeadlightData(sm.camera.position, 16);
-    updateRetroreflection(hl.data, hl.count, nightFactor, isDriveMode);
+    if (driveMode.isActive()) {
+      driveMode.update(dt, elapsed, timeState);
+    } else {
+      flight.update(dt);
+      vehicles.update(dt);
+      cityscape.update(dt, elapsed);
+      birds.update(dt, elapsed);
+    }
+
+    // HUD visibility
+    const flightHud = document.getElementById('hud')!;
+    flightHud.style.display = driveMode.isActive() ? 'none' : '';
 
     clock.update(dt);
 
