@@ -71,7 +71,7 @@ export function createMaterials(): BridgeMaterials {
     aoMapIntensity: 0.8,
     clearcoat: 0.08,
     clearcoatRoughness: 0.6,
-    envMapIntensity: 0.5,
+    envMapIntensity: 0,
   });
 
   const deckSteel = new THREE.MeshPhysicalMaterial({
@@ -82,7 +82,7 @@ export function createMaterials(): BridgeMaterials {
     metalness: 0.3,
     clearcoat: 0.05,
     clearcoatRoughness: 0.7,
-    envMapIntensity: 0.4,
+    envMapIntensity: 0,
   });
 
   const cableSteel = new THREE.MeshPhysicalMaterial({
@@ -94,7 +94,7 @@ export function createMaterials(): BridgeMaterials {
     metalness: 0.4,
     clearcoat: 0.1,
     clearcoatRoughness: 0.5,
-    envMapIntensity: 0.5,
+    envMapIntensity: 0,
   });
 
   const freshPaint = new THREE.MeshPhysicalMaterial({
@@ -103,7 +103,7 @@ export function createMaterials(): BridgeMaterials {
     metalness: 0.2,
     clearcoat: 0.15,
     clearcoatRoughness: 0.4,
-    envMapIntensity: 0.6,
+    envMapIntensity: 0,
   });
 
   const pierConcrete = new THREE.MeshStandardMaterial({
@@ -164,7 +164,7 @@ export function createMaterials(): BridgeMaterials {
     transmission: 0.6,
     thickness: 0.5,
     emissive: 0xffaa44,
-    emissiveIntensity: 1.5,
+    emissiveIntensity: 0.3,
   });
 
   return {
