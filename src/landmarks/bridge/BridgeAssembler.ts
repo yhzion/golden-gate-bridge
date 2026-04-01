@@ -36,6 +36,18 @@ import { MarinAnchorage } from './approaches/MarinAnchorage';
 import { TollPlaza } from './approaches/TollPlaza';
 import { ApproachViaducts } from './approaches/ApproachViaducts';
 
+// Micro-details (S3a–S3d)
+import { RivetSystem } from './micro/RivetSystem';
+import { SplicePlates } from './micro/SplicePlates';
+import { WeldBeads } from './micro/WeldBeads';
+import { GussetPlates } from './micro/GussetPlates';
+
+// Environment (E1–E2)
+import { PierWake } from '@/world/environment/PierWake';
+import { TidalFoam } from '@/world/environment/TidalFoam';
+import { WetSurface } from '@/world/environment/WetSurface';
+import { FogTendrils } from '@/world/environment/FogTendrils';
+
 export class BridgeAssembler extends BaseLandmark {
   private parts: BridgePart[] = [];
   private updatableParts: BridgePart[] = [];
@@ -83,6 +95,18 @@ export class BridgeAssembler extends BaseLandmark {
     this.registerPart(new MarinAnchorage());
     this.registerPart(new TollPlaza());
     this.registerPart(new ApproachViaducts());
+
+    // Micro-details (S3a–S3d)
+    this.registerPart(new RivetSystem());
+    this.registerPart(new SplicePlates());
+    this.registerPart(new WeldBeads());
+    this.registerPart(new GussetPlates());
+
+    // Environment (E1–E2)
+    this.registerPart(new PierWake());
+    this.registerPart(new TidalFoam());
+    this.registerPart(new WetSurface());
+    this.registerPart(new FogTendrils());
 
     // Phase 1: Geometry
     for (const p of this.parts) {
