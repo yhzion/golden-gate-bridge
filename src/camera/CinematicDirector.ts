@@ -87,7 +87,7 @@ export class CinematicDirector {
     this.crossfadeTime = 0;
   }
 
-  /** Resume cinematic from the beginning of the next logical shot */
+  /** Resume cinematic, restarting the current shot from the beginning */
   resume() {
     this.isActive = true;
     this.shotTime = 0;

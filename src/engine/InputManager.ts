@@ -124,7 +124,6 @@ export class InputManager {
     }
     if (e.code === 'KeyF') this.onToggleFog?.();
     if (e.code === 'KeyL') this.onLightingKey?.('L');
-    if (e.code === 'KeyV') this.onLightingKey?.('V');
     if (e.code === 'KeyG') this.onLightingKey?.('G');
     if (e.code >= 'Digit7' && e.code <= 'Digit9') {
       this.onWeatherKey?.(+e.code.slice(5));

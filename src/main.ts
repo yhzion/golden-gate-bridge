@@ -11,6 +11,7 @@ import { createTerrain } from '@/world/TerrainGenerator';
 import { BridgeAssembler } from '@/landmarks/bridge/BridgeAssembler';
 import { landmarkRegistry } from '@/landmarks/index';
 import { FlightCamera } from '@/camera/FlightCamera';
+import { CINEMATIC_SHOTS } from '@/camera/shots';
 import { VehicleSystem } from '@/traffic/VehicleSystem';
 import { updateRetroreflection } from '@/traffic/RetroreflectionSystem';
 import { Cityscape } from '@/traffic/Cityscape';
@@ -116,6 +117,8 @@ function init() {
       setTimeout(() => (shotLabel.style.opacity = '0'), 2000);
     }
   };
+  // Fire initial shot name
+  flight.director.onShotChange(CINEMATIC_SHOTS[0].name);
 
   // UI — help toggle
   const helpToggle = document.getElementById('helpToggle');

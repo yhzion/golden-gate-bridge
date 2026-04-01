@@ -22,6 +22,12 @@ export class CinematicShot {
   private _pos = new THREE.Vector3();
   private _look = new THREE.Vector3();
 
+  // Cached boundary vectors (avoid allocation per transition)
+  readonly startPosition: THREE.Vector3;
+  readonly startLookAt: THREE.Vector3;
+  readonly endPosition: THREE.Vector3;
+  readonly endLookAt: THREE.Vector3;
+
   constructor(config: ShotConfig) {
     this.name = config.name;
     this.duration = config.duration;
@@ -33,6 +39,11 @@ export class CinematicShot {
     this.lookAtCurve = new THREE.CatmullRomCurve3(
       config.keyframes.map(kf => new THREE.Vector3(...kf.lookAt)),
     );
+
+    this.startPosition = this.positionCurve.getPoint(0);
+    this.startLookAt = this.lookAtCurve.getPoint(0);
+    this.endPosition = this.positionCurve.getPoint(1);
+    this.endLookAt = this.lookAtCurve.getPoint(1);
   }
 
   /** Sample at time t (0..1). Returns reusable refs — copy if you need to keep them. */
@@ -41,21 +52,5 @@ export class CinematicShot {
     this.positionCurve.getPoint(e, this._pos);
     this.lookAtCurve.getPoint(e, this._look);
     return { position: this._pos, lookAt: this._look };
-  }
-
-  get startPosition(): THREE.Vector3 {
-    return this.positionCurve.getPoint(0);
-  }
-
-  get startLookAt(): THREE.Vector3 {
-    return this.lookAtCurve.getPoint(0);
-  }
-
-  get endPosition(): THREE.Vector3 {
-    return this.positionCurve.getPoint(1);
-  }
-
-  get endLookAt(): THREE.Vector3 {
-    return this.lookAtCurve.getPoint(1);
   }
 }
