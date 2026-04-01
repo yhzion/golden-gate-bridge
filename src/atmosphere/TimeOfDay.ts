@@ -53,7 +53,7 @@ interface TimeKeyframe {
 
 const KEYFRAMES: TimeKeyframe[] = [
   // Night (00:00)
-  { hour: 0, sunElevation: -30, sunAzimuth: 0, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.03, hemisphereIntensity: 0.04, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
+  { hour: 0, sunElevation: -30, sunAzimuth: 0, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.015, hemisphereIntensity: 0.02, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
   // Pre-dawn (04:30)
   { hour: 4.5, sunElevation: -10, sunAzimuth: 80, sunColor: [0.25, 0.12, 0.08], sunIntensity: 0.03, ambientIntensity: 0.04, hemisphereIntensity: 0.05, turbidity: 3, rayleigh: 0.8, fogDensity: 0.00013, fogColor: [0.15, 0.1, 0.12], windowEmissive: 0.6, streetLightEmissive: 0.8, exposure: 1.0, envMapIntensity: 0.04 },
   // Dawn (06:00)
@@ -69,9 +69,9 @@ const KEYFRAMES: TimeKeyframe[] = [
   // Dusk (20:00)
   { hour: 20, sunElevation: -5, sunAzimuth: 280, sunColor: [0.4, 0.15, 0.08], sunIntensity: 0.04, ambientIntensity: 0.04, hemisphereIntensity: 0.05, turbidity: 3, rayleigh: 0.8, fogDensity: 0.00013, fogColor: [0.2, 0.12, 0.15], windowEmissive: 0.7, streetLightEmissive: 0.9, exposure: 1.0, envMapIntensity: 0.05 },
   // Night (22:00)
-  { hour: 22, sunElevation: -30, sunAzimuth: 300, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.03, hemisphereIntensity: 0.04, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
+  { hour: 22, sunElevation: -30, sunAzimuth: 300, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.015, hemisphereIntensity: 0.02, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
   // Night wrap (24:00 = 0:00)
-  { hour: 24, sunElevation: -30, sunAzimuth: 360, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.03, hemisphereIntensity: 0.04, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
+  { hour: 24, sunElevation: -30, sunAzimuth: 360, sunColor: [0.05, 0.05, 0.12], sunIntensity: 0, ambientIntensity: 0.015, hemisphereIntensity: 0.02, turbidity: 2, rayleigh: 0.5, fogDensity: 0.00015, fogColor: [0.05, 0.05, 0.1], windowEmissive: 0.9, streetLightEmissive: 1.0, exposure: 1.0, envMapIntensity: 0.03 },
 ];
 
 function lerp(a: number, b: number, t: number): number {

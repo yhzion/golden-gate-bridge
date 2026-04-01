@@ -33,11 +33,11 @@ export class ChunkManager {
 
     this.glassMat = new THREE.MeshPhysicalMaterial({
       color: 0x556688, metalness: 0.5, roughness: 0.3,
-      envMapIntensity: 0.4, clearcoat: 0.05,
+      envMapIntensity: 0, clearcoat: 0.05,
     });
     this.concreteMat = new THREE.MeshStandardMaterial({
       color: 0x888888, roughness: 0.8, metalness: 0.05,
-      envMapIntensity: 0.3,
+      envMapIntensity: 0,
     });
     this.roadMat = new THREE.MeshStandardMaterial({
       color: 0x333333, roughness: 0.92, metalness: 0,

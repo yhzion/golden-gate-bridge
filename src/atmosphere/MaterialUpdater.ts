@@ -115,6 +115,9 @@ export class MaterialUpdater {
     // Night factor: 0 = full day, 1 = full night
     const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
 
+    // Hide Sky dome at night — celestial system provides the night sky
+    this.sky.visible = nightFactor < 0.5;
+
     // Update cached materials
     for (const entry of this.cached) {
       if (entry.isLight) {

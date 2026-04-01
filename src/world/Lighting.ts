@@ -6,7 +6,7 @@ export interface LightingResult {
 }
 
 export function createLighting(scene: THREE.Scene): LightingResult {
-  const sun = new THREE.DirectionalLight(0xffddbb, 1.5);
+  const sun = new THREE.DirectionalLight(0xffddbb, 0.25);
   sun.position.set(-600, 300, -400);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);

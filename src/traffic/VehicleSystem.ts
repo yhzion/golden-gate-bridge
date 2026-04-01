@@ -77,8 +77,8 @@ export class VehicleSystem {
 
     // Lights
     const lightGeo = new THREE.BoxGeometry(1.5, 0.18, 0.12);
-    const tailMat = new THREE.MeshStandardMaterial({ emissive: 0xff3300, emissiveIntensity: 3.5, color: 0xff3300 });
-    const headMat = new THREE.MeshStandardMaterial({ emissive: 0xffffcc, emissiveIntensity: 3.0, color: 0xffffcc });
+    const tailMat = new THREE.MeshStandardMaterial({ emissive: 0xff3300, emissiveIntensity: 0.8, color: 0xff3300 });
+    const headMat = new THREE.MeshStandardMaterial({ emissive: 0xffffcc, emissiveIntensity: 0.8, color: 0xffffcc });
     this.tailMesh = new THREE.InstancedMesh(lightGeo, tailMat, NUM_CARS);
     this.headMesh = new THREE.InstancedMesh(lightGeo, headMat, NUM_CARS);
 

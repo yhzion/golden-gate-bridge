@@ -12,6 +12,13 @@ export class SkyController {
     this.sm = sm;
     this.sky = new Sky();
     this.sky.scale.setScalar(50000);
+    // Clamp Sky output to LDR range (Preetham model emits HDR values up to thousands)
+    this.sky.material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'gl_FragColor = vec4( retColor, 1.0 );',
+        'gl_FragColor = vec4( min( retColor, vec3( 1.0 ) ), 1.0 );',
+      );
+    };
     const u = this.sky.material.uniforms;
     u['turbidity'].value = 4;
     u['rayleigh'].value = 1.5;

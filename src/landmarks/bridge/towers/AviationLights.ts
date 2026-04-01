@@ -74,7 +74,7 @@ export class AviationLights extends BaseBridgePart {
     this.lensMaterial = new THREE.MeshStandardMaterial({
       color: 0xff2200,
       emissive: 0xff2200,
-      emissiveIntensity: 2.5,
+      emissiveIntensity: 0.8,
       roughness: 0.1,
       metalness: 0.0,
     });

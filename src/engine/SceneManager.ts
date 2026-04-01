@@ -4,9 +4,6 @@ export class SceneManager {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  sceneEnv: THREE.Scene;
-  pmremGen: THREE.PMREMGenerator;
-  envTarget: THREE.WebGLRenderTarget | null = null;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -27,10 +24,6 @@ export class SceneManager {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(this.renderer.domElement);
 
-    this.sceneEnv = new THREE.Scene();
-    this.pmremGen = new THREE.PMREMGenerator(this.renderer);
-    this.pmremGen.compileEquirectangularShader();
-
     window.addEventListener('resize', this.onResize);
   }
 
@@ -42,8 +35,6 @@ export class SceneManager {
 
   dispose() {
     window.removeEventListener('resize', this.onResize);
-    this.pmremGen.dispose();
-    if (this.envTarget) this.envTarget.dispose();
     this.renderer.dispose();
   }
 }

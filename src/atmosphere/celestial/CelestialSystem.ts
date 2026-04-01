@@ -113,6 +113,7 @@ export class CelestialSystem {
       `,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
     });

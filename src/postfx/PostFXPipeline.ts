@@ -114,17 +114,16 @@ export class PostFXPipeline {
 
     const fogActive = weatherState.fogMultiplier > 2;
     if (nightFactor > 0.7 && fogActive) {
-      this.bloom.threshold = 0.2;
-      this.bloom.strength = 1.2;
-    } else if (nightFactor > 0.5) {
       this.bloom.threshold = 0.4;
       this.bloom.strength = 0.8;
-    } else if (nightFactor > 0.2) {
-      this.bloom.threshold = 0.6;
+    } else if (nightFactor > 0.5) {
+      this.bloom.threshold = 0.5;
       this.bloom.strength = 0.5;
-    } else {
-      this.bloom.threshold = 0.9;
+    } else if (nightFactor > 0.2) {
+      this.bloom.threshold = 0.7;
       this.bloom.strength = 0.3;
+    } else {
+      this.bloom.strength = 0;
     }
 
     // Cache light queries once per frame (avoids repeated clone/spread allocations)

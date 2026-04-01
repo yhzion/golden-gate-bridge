@@ -37,7 +37,7 @@ export class Cityscape {
     g.add(lhTower);
     const lhLamp = new THREE.Mesh(
       new THREE.CylinderGeometry(3, 2.5, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xccddee, emissive: 0xffffaa, emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0xccddee, emissive: 0xffffaa, emissiveIntensity: 0.6, roughness: 0.1, metalness: 0.3 }),
     );
     lhLamp.position.set(1200, 41, 385);
     g.add(lhLamp);
