@@ -7,8 +7,9 @@ import type { SceneManager } from '@/engine/SceneManager';
 
 interface CachedMaterial {
   mat: THREE.MeshStandardMaterial;
-  baseEnvMapIntensity: number;
   baseEmissiveIntensity: number;
+  /** Ratio relative to timeState.envMapIntensity (e.g. bridge=1.0, cable=0.75) */
+  envMapRatio: number;
   isLight: boolean;
   isAviation: boolean;
 }
@@ -19,6 +20,7 @@ export class MaterialUpdater {
   private water: Water;
   private sky: Sky;
   private sunLight: THREE.DirectionalLight;
+  private hemisphereLight: THREE.HemisphereLight;
   private ambientLight: THREE.AmbientLight | null = null;
   private cached: CachedMaterial[] = [];
   private cacheBuilt = false;
@@ -29,12 +31,14 @@ export class MaterialUpdater {
     water: Water,
     sky: Sky,
     sunLight: THREE.DirectionalLight,
+    hemisphereLight: THREE.HemisphereLight,
   ) {
     this.sm = sm;
     this.scene = sm.scene;
     this.water = water;
     this.sky = sky;
     this.sunLight = sunLight;
+    this.hemisphereLight = hemisphereLight;
 
     sm.scene.traverse((obj) => {
       if (obj instanceof THREE.AmbientLight) {
@@ -59,10 +63,16 @@ export class MaterialUpdater {
       const isAviation = hasEmissive && mat.emissive.r > 0.8 && mat.emissive.g < 0.2; // red
       const isLight = hasEmissive && !isAviation; // amber lanterns, headlights
 
+      // Compute envMap ratio from original baseEnvMapIntensity
+      // Bridge steel was 0.4, cable was 0.3 → ratios 1.0 and 0.75
+      // Materials without envMap have intensity 0 or 1 (default) — ratio stays as-is
+      const baseEnv = mat.envMapIntensity ?? 1;
+      const envMapRatio = baseEnv > 0 ? baseEnv / 0.4 : 0;
+
       this.cached.push({
         mat,
-        baseEnvMapIntensity: mat.envMapIntensity ?? 1,
         baseEmissiveIntensity: mat.emissiveIntensity,
+        envMapRatio,
         isLight,
         isAviation,
       });
@@ -104,6 +114,9 @@ export class MaterialUpdater {
       this.ambientLight.intensity = time.ambientIntensity;
     }
 
+    // Hemisphere
+    this.hemisphereLight.intensity = time.hemisphereIntensity;
+
     // Water
     this.water.material.uniforms['sunDirection'].value.copy(sunDir).normalize();
 
@@ -122,8 +135,8 @@ export class MaterialUpdater {
 
     // Update cached materials
     for (const entry of this.cached) {
-      // Reduce env map reflection at night
-      entry.mat.envMapIntensity = entry.baseEnvMapIntensity * (1 - nightFactor * 0.85);
+      // EnvMap intensity from TimeOfDay keyframes (replaces old nightFactor-based logic)
+      entry.mat.envMapIntensity = time.envMapIntensity * entry.envMapRatio;
 
       if (entry.isLight) {
         // Street lanterns: amber glow at night (like real GGB HPS 250W amber lamps)
