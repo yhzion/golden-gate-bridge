@@ -9,6 +9,8 @@ export class FlightCamera {
   private camera: THREE.Camera;
   private ctrl: ControlState;
   readonly director: CinematicDirector;
+  private _dir = new THREE.Vector3();
+  private _right = new THREE.Vector3();
 
   constructor(camera: THREE.Camera, ctrl: ControlState) {
     this.camera = camera;
@@ -39,9 +41,9 @@ export class FlightCamera {
     // Free flight
     this.camera.quaternion.setFromEuler(this.ctrl.euler);
     const spd = this.ctrl.speed * (this.ctrl.boost ? 3 : 1) * dt;
-    const dir = new THREE.Vector3();
+    const dir = this._dir;
     this.camera.getWorldDirection(dir);
-    const right = new THREE.Vector3().crossVectors(dir, this.camera.up).normalize();
+    const right = this._right.crossVectors(dir, this.camera.up).normalize();
 
     if (this.ctrl.fwd) this.ctrl.vel.addScaledVector(dir, spd);
     if (this.ctrl.back) this.ctrl.vel.addScaledVector(dir, -spd);

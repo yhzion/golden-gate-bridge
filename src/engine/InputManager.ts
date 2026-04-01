@@ -31,7 +31,6 @@ export class InputManager {
   ctrl: ControlState;
   private canvas: HTMLCanvasElement;
   private onWeatherKey: ((n: number) => void) | null = null;
-  private onToggleFog: (() => void) | null = null;
   private onLightingKey: ((key: 'L' | 'V' | 'G') => void) | null = null;
   private hideTimer: number | null = null;
   private readonly HIDE_DELAY = 3000;
@@ -61,11 +60,9 @@ export class InputManager {
 
   setCallbacks(
     onWeatherKey: (n: number) => void,
-    onToggleFog: () => void,
     onLightingKey?: (key: 'L' | 'V' | 'G') => void,
   ) {
     this.onWeatherKey = onWeatherKey;
-    this.onToggleFog = onToggleFog;
     this.onLightingKey = onLightingKey ?? null;
   }
 
@@ -122,7 +119,6 @@ export class InputManager {
       this.ctrl[mapped] = true;
       e.preventDefault();
     }
-    if (e.code === 'KeyF') this.onToggleFog?.();
     if (e.code === 'KeyL') this.onLightingKey?.('L');
     if (e.code === 'KeyG') this.onLightingKey?.('G');
     if (e.code >= 'Digit7' && e.code <= 'Digit9') {

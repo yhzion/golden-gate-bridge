@@ -2,7 +2,10 @@ import type { ShotConfig } from './CinematicShot';
 
 export const CINEMATIC_SHOTS: ShotConfig[] = [
   {
-    name: 'DRAMATIC REVEAL',
+    name: 'GOLDEN GATE BRIDGE',
+    subtitle: 'San Francisco, California',
+    titlePosition: 'bottom-left',
+    titleAnimation: 'slide-up',
     duration: 12,
     keyframes: [
       { position: [-300, 8, -500],   lookAt: [0, 67, 400] },
@@ -12,7 +15,10 @@ export const CINEMATIC_SHOTS: ShotConfig[] = [
     ],
   },
   {
-    name: 'TOWER FLY-BY',
+    name: 'SOUTH TOWER',
+    subtitle: '227m Above Sea Level',
+    titlePosition: 'bottom-right',
+    titleAnimation: 'slide-left',
     duration: 10,
     keyframes: [
       { position: [40, 60, -100],    lookAt: [0, 150, 0] },
@@ -22,7 +28,10 @@ export const CINEMATIC_SHOTS: ShotConfig[] = [
     ],
   },
   {
-    name: 'DECK DRIVE-THROUGH',
+    name: 'THE DECK',
+    subtitle: '2,737m Suspension Span',
+    titlePosition: 'top-left',
+    titleAnimation: 'slide-right',
     duration: 14,
     easing: 'linear',
     keyframes: [
@@ -34,7 +43,10 @@ export const CINEMATIC_SHOTS: ShotConfig[] = [
     ],
   },
   {
-    name: 'CABLE RIDE',
+    name: 'MAIN CABLES',
+    subtitle: 'Art Deco Engineering',
+    titlePosition: 'bottom-left',
+    titleAnimation: 'slide-up',
     duration: 12,
     keyframes: [
       { position: [16, 72, -200],    lookAt: [16, 100, 0] },
@@ -45,7 +57,10 @@ export const CINEMATIC_SHOTS: ShotConfig[] = [
     ],
   },
   {
-    name: 'UNDER THE BRIDGE',
+    name: 'FORT POINT',
+    subtitle: 'Beneath the Arch',
+    titlePosition: 'bottom-right',
+    titleAnimation: 'slide-left',
     duration: 10,
     keyframes: [
       { position: [50, 12, -100],    lookAt: [0, 60, 200] },
@@ -55,7 +70,10 @@ export const CINEMATIC_SHOTS: ShotConfig[] = [
     ],
   },
   {
-    name: 'AERIAL PANORAMA',
+    name: 'THE BAY',
+    subtitle: 'Pacific Panorama',
+    titlePosition: 'center',
+    titleAnimation: 'fade',
     duration: 14,
     keyframes: [
       { position: [-600, 350, -200], lookAt: [0, 50, 640] },

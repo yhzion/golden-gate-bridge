@@ -59,7 +59,7 @@ export function createMaterials(): BridgeMaterials {
   });
 
   const towerSteel = new THREE.MeshPhysicalMaterial({
-    color: BRIDGE.color,
+    color: 0xffffff,
     map: steelTex.colorMap,
     normalMap: steelTex.normalMap,
     normalScale: new THREE.Vector2(0.6, 0.6),

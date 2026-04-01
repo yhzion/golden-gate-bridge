@@ -44,9 +44,9 @@ import { GussetPlates } from './micro/GussetPlates';
 
 // Environment (E1–E2)
 import { PierWake } from '@/world/environment/PierWake';
-import { TidalFoam } from '@/world/environment/TidalFoam';
+
 import { WetSurface } from '@/world/environment/WetSurface';
-import { FogTendrils } from '@/world/environment/FogTendrils';
+
 
 export class BridgeAssembler extends BaseLandmark {
   private parts: BridgePart[] = [];
@@ -104,9 +104,7 @@ export class BridgeAssembler extends BaseLandmark {
 
     // Environment (E1–E2)
     this.registerPart(new PierWake());
-    this.registerPart(new TidalFoam());
     this.registerPart(new WetSurface());
-    this.registerPart(new FogTendrils());
 
     // Phase 1: Geometry
     for (const p of this.parts) {

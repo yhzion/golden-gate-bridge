@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CinematicShot } from './CinematicShot';
-import type { ShotConfig } from './CinematicShot';
+import type { ShotConfig, TitlePosition, TitleAnimation } from './CinematicShot';
 
 const CROSSFADE_DURATION = 2; // seconds
 
@@ -23,10 +23,18 @@ export class CinematicDirector {
   private _look = new THREE.Vector3();
   private _obj = new THREE.Object3D();
 
-  // Shot name callback
-  onShotChange: ((name: string) => void) | null = null;
+  // Shot change callback with full metadata
+  onShotChange: ((info: {
+    name: string;
+    subtitle?: string;
+    titlePosition?: TitlePosition;
+    titleAnimation?: TitleAnimation;
+  }) => void) | null = null;
+
+  private configs: ShotConfig[];
 
   constructor(configs: ShotConfig[]) {
+    this.configs = configs;
     this.shots = configs.map(c => new CinematicShot(c));
   }
 
@@ -50,7 +58,7 @@ export class CinematicDirector {
       if (t >= 1) {
         this.crossfading = false;
         this.shotTime = 0;
-        this.onShotChange?.(this.shots[this.currentIndex].name);
+        this.fireShotChange(this.currentIndex);
       }
       return true;
     }
@@ -87,12 +95,22 @@ export class CinematicDirector {
     this.crossfadeTime = 0;
   }
 
+  private fireShotChange(index: number) {
+    const cfg = this.configs[index];
+    this.onShotChange?.({
+      name: cfg.name,
+      subtitle: cfg.subtitle,
+      titlePosition: cfg.titlePosition,
+      titleAnimation: cfg.titleAnimation,
+    });
+  }
+
   /** Resume cinematic, restarting the current shot from the beginning */
   resume() {
     this.isActive = true;
     this.shotTime = 0;
     this.crossfading = false;
-    this.onShotChange?.(this.shots[this.currentIndex].name);
+    this.fireShotChange(this.currentIndex);
   }
 
   pause() {

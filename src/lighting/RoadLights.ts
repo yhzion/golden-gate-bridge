@@ -5,7 +5,7 @@ import type { Tier } from './QualityTier';
 
 const LIGHT_SPACING = 50;
 const LIGHT_COLOR = 0xffddaa;
-const MAX_POOL = 20;
+const MAX_POOL = 30;
 
 interface LampPosition {
   pos: THREE.Vector3;
@@ -16,6 +16,9 @@ export class RoadLights {
   private pool: THREE.PointLight[] = [];
   private activeCount = 0;
   private sortBuffer: { pos: THREE.Vector3; dist: number }[] = [];
+  private _cachedPositions: THREE.Vector3[] = [];
+  private _cachedColors: THREE.Color[] = [];
+  private _cachedIntensities: number[] = [];
 
   constructor(scene: THREE.Scene) {
     const len = BRIDGE.mainSpan + BRIDGE.sideSpan * 2;
@@ -34,7 +37,7 @@ export class RoadLights {
     }
 
     for (let i = 0; i < MAX_POOL; i++) {
-      const pl = new THREE.PointLight(LIGHT_COLOR, 0, 30, 2);
+      const pl = new THREE.PointLight(LIGHT_COLOR, 0, 600, 0.5);
       pl.visible = false;
       scene.add(pl);
       this.pool.push(pl);
@@ -42,7 +45,7 @@ export class RoadLights {
   }
 
   update(dt: number, time: TimeState, tier: Tier, cameraPos: THREE.Vector3): void {
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 1.0, 0, 1);
     const lightFactor = THREE.MathUtils.smoothstep(nightFactor, 0.2, 0.5);
 
     if (lightFactor < 0.01) {
@@ -51,7 +54,7 @@ export class RoadLights {
       return;
     }
 
-    const maxActive = tier === 'high' ? 20 : tier === 'medium' ? 8 : 4;
+    const maxActive = tier === 'high' ? 30 : tier === 'medium' ? 14 : 6;
 
     // Update distances in-place, then sort (no per-frame allocations)
     for (let i = 0; i < this.sortBuffer.length; i++) {
@@ -64,7 +67,7 @@ export class RoadLights {
       if (i < count && this.sortBuffer[i].dist < 1000) {
         this.pool[i].visible = true;
         this.pool[i].position.copy(this.sortBuffer[i].pos);
-        this.pool[i].intensity = lightFactor * 0.8;
+        this.pool[i].intensity = lightFactor * 0.4;
       } else {
         this.pool[i].visible = false;
       }
@@ -73,15 +76,30 @@ export class RoadLights {
   }
 
   getActiveLightPositions(): THREE.Vector3[] {
-    return this.pool.filter(p => p.visible).map(p => p.position.clone());
+    let count = 0;
+    for (let i = 0; i < this.pool.length; i++) {
+      if (this.pool[i].visible) this._cachedPositions[count++] = this.pool[i].position;
+    }
+    this._cachedPositions.length = count;
+    return this._cachedPositions;
   }
 
   getActiveLightColors(): THREE.Color[] {
-    return this.pool.filter(p => p.visible).map(p => p.color.clone());
+    let count = 0;
+    for (let i = 0; i < this.pool.length; i++) {
+      if (this.pool[i].visible) this._cachedColors[count++] = this.pool[i].color;
+    }
+    this._cachedColors.length = count;
+    return this._cachedColors;
   }
 
   getActiveLightIntensities(): number[] {
-    return this.pool.filter(p => p.visible).map(p => p.intensity);
+    let count = 0;
+    for (let i = 0; i < this.pool.length; i++) {
+      if (this.pool[i].visible) this._cachedIntensities[count++] = this.pool[i].intensity;
+    }
+    this._cachedIntensities.length = count;
+    return this._cachedIntensities;
   }
 
   dispose(): void {

@@ -8,6 +8,8 @@ export class SafetyLights {
   private headlightPool: THREE.PointLight[] = [];
   private elapsed = 0;
 
+  private headlightPositionsSet = false;
+
   constructor(scene: THREE.Scene) {
     scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
@@ -21,7 +23,7 @@ export class SafetyLights {
     });
 
     for (let i = 0; i < 4; i++) {
-      const pl = new THREE.PointLight(0xffffee, 0, 40, 2);
+      const pl = new THREE.PointLight(0xffffee, 0, 250, 0.8);
       pl.visible = false;
       scene.add(pl);
       this.headlightPool.push(pl);
@@ -30,12 +32,12 @@ export class SafetyLights {
 
   update(dt: number, time: TimeState, tier: Tier, elapsed: number): void {
     this.elapsed = elapsed;
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 1.0, 0, 1);
 
     if (nightFactor > 0.2) {
       const strobePeriod = nightFactor > 0.5 ? 0.8 : 1.5;
       const strobePhase = (elapsed % strobePeriod) / strobePeriod;
-      const strobeIntensity = 0.5 + 2.5 * Math.pow(Math.max(0, Math.sin(strobePhase * Math.PI * 2)), 4);
+      const strobeIntensity = 0.3 + 0.9 * Math.pow(Math.max(0, Math.sin(strobePhase * Math.PI * 2)), 4);
       for (const mat of this.aviationMaterials) {
         mat.emissiveIntensity = strobeIntensity * nightFactor;
       }
@@ -49,12 +51,13 @@ export class SafetyLights {
     const maxHeadlights = tier === 'high' ? 4 : tier === 'medium' ? 2 : 0;
 
     for (let i = 0; i < this.headlightPool.length; i++) {
-      this.headlightPool[i].visible = i < maxHeadlights && headlightFactor > 0.01;
-      this.headlightPool[i].intensity = headlightFactor * 0.6;
+      this.headlightPool[i].visible = this.headlightPositionsSet && i < maxHeadlights && headlightFactor > 0.01;
+      this.headlightPool[i].intensity = headlightFactor * 0.3;
     }
   }
 
   setHeadlightPositions(positions: THREE.Vector3[]): void {
+    this.headlightPositionsSet = positions.length > 0;
     for (let i = 0; i < this.headlightPool.length; i++) {
       if (i < positions.length) {
         this.headlightPool[i].position.copy(positions[i]);

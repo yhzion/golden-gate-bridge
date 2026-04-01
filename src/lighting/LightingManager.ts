@@ -10,6 +10,9 @@ export class LightingManager {
   private road: RoadLights;
   private safety: SafetyLights;
   private camera: THREE.Camera;
+  private _positions: THREE.Vector3[] = [];
+  private _colors: THREE.Color[] = [];
+  private _intensities: number[] = [];
 
   constructor(scene: THREE.Scene, camera: THREE.Camera) {
     this.camera = camera;
@@ -32,25 +35,36 @@ export class LightingManager {
     this.structural.updateShadowBudget(camPos, maxShadows);
   }
 
+  private _mergeArrays<T>(a: T[], b: T[], out: T[], max: number): T[] {
+    let count = 0;
+    for (let i = 0; i < a.length && count < max; i++) out[count++] = a[i];
+    for (let i = 0; i < b.length && count < max; i++) out[count++] = b[i];
+    out.length = count;
+    return out;
+  }
+
   getLightPositions(): THREE.Vector3[] {
-    const positions: THREE.Vector3[] = [];
-    positions.push(...this.structural.getTowerLightPositions());
-    positions.push(...this.road.getActiveLightPositions());
-    return positions.slice(0, 8);
+    return this._mergeArrays(
+      this.structural.getTowerLightPositions(),
+      this.road.getActiveLightPositions(),
+      this._positions, 8,
+    );
   }
 
   getLightColors(): THREE.Color[] {
-    const colors: THREE.Color[] = [];
-    colors.push(...this.structural.getTowerLightColors());
-    colors.push(...this.road.getActiveLightColors());
-    return colors.slice(0, 8);
+    return this._mergeArrays(
+      this.structural.getTowerLightColors(),
+      this.road.getActiveLightColors(),
+      this._colors, 8,
+    );
   }
 
   getLightIntensities(): number[] {
-    const intensities: number[] = [];
-    intensities.push(...this.structural.getTowerLightIntensities());
-    intensities.push(...this.road.getActiveLightIntensities());
-    return intensities.slice(0, 8);
+    return this._mergeArrays(
+      this.structural.getTowerLightIntensities(),
+      this.road.getActiveLightIntensities(),
+      this._intensities, 8,
+    );
   }
 
   setQualityTier(tier: Tier | 'auto'): void {

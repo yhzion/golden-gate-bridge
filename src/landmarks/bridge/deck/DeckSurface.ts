@@ -13,7 +13,6 @@ import type { BridgeMaterials } from '@/world/Materials';
  * - Double yellow center line
  */
 export class DeckSurface extends BaseBridgePart {
-  private roadMesh!: THREE.Mesh;
   private markingsGroup = new THREE.Group();
 
   constructor() {
@@ -24,28 +23,29 @@ export class DeckSurface extends BaseBridgePart {
     const totalLen = BRIDGE.totalLength;
     const roadW = BRIDGE.deckW - 2; // Leave space for railings/sidewalks
 
-    // Road surface plane
-    const roadGeo = new THREE.PlaneGeometry(roadW, totalLen, 1, 1);
-    roadGeo.rotateX(-Math.PI / 2);
-    this.roadMesh = new THREE.Mesh(roadGeo);
-    this.roadMesh.position.set(0, BRIDGE.deckH + 0.02, totalLen / 2 - BRIDGE.sideSpan);
-    this.roadMesh.receiveShadow = true;
-    this.group.add(this.roadMesh);
+    // Road surface is provided by RoadSurface (D3) — no duplicate plane here
 
-    // Sidewalks (slightly raised, darker surface on both edges)
+    // Sidewalks — split at tower positions so they don't pass through columns
     const sidewalkW = 1.8;
+    const towerZs = [0, BRIDGE.mainSpan];
+    const towerEx = 5;
+    const segments = this.buildSegments(-BRIDGE.sideSpan, BRIDGE.mainSpan + BRIDGE.sideSpan, towerZs, towerEx);
+
     for (const side of [-1, 1]) {
-      const swGeo = new THREE.PlaneGeometry(sidewalkW, totalLen, 1, 1);
-      swGeo.rotateX(-Math.PI / 2);
-      const sw = new THREE.Mesh(swGeo);
-      sw.position.set(
-        side * (roadW / 2 + sidewalkW / 2),
-        BRIDGE.deckH + 0.08,
-        totalLen / 2 - BRIDGE.sideSpan,
-      );
-      sw.receiveShadow = true;
-      sw.userData.isSidewalk = true;
-      this.group.add(sw);
+      for (const seg of segments) {
+        const segLen = seg.z1 - seg.z0;
+        const swGeo = new THREE.PlaneGeometry(sidewalkW, segLen, 1, 1);
+        swGeo.rotateX(-Math.PI / 2);
+        const sw = new THREE.Mesh(swGeo);
+        sw.position.set(
+          side * (roadW / 2 + sidewalkW / 2),
+          BRIDGE.deckH + 0.08,
+          seg.z0 + segLen / 2,
+        );
+        sw.receiveShadow = true;
+        sw.userData.isSidewalk = true;
+        this.group.add(sw);
+      }
     }
 
     // --- Lane Markings ---
@@ -136,10 +136,7 @@ export class DeckSurface extends BaseBridgePart {
     this.markingsGroup.add(instanced);
   }
 
-  applyMaterials(mats: BridgeMaterials): void {
-    // Apply asphalt material to road surface
-    this.roadMesh.material = mats.asphalt;
-
+  applyMaterials(_mats: BridgeMaterials): void {
     // Apply a darker asphalt tone to sidewalks
     const sidewalkMat = new THREE.MeshStandardMaterial({
       color: 0x3a3a3a,
@@ -155,5 +152,17 @@ export class DeckSurface extends BaseBridgePart {
 
   addMicroDetails(): void {
     // No additional micro-details needed
+  }
+
+  private buildSegments(zStart: number, zEnd: number, towerZs: number[], ex: number): { z0: number; z1: number }[] {
+    const cuts = towerZs.map((tz) => ({ lo: tz - ex, hi: tz + ex })).sort((a, b) => a.lo - b.lo);
+    const segs: { z0: number; z1: number }[] = [];
+    let cursor = zStart;
+    for (const c of cuts) {
+      if (cursor < c.lo) segs.push({ z0: cursor, z1: c.lo });
+      cursor = Math.max(cursor, c.hi);
+    }
+    if (cursor < zEnd) segs.push({ z0: cursor, z1: zEnd });
+    return segs;
   }
 }

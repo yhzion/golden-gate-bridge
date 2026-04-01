@@ -24,10 +24,13 @@ export class TollPlaza extends BaseBridgePart {
     for (let i = 0; i < count; i++) {
       const gz = baseZ + i * gantrySpacing;
 
+      // Gantries stand at road level (deckH)
+      const roadY = BRIDGE.deckH;
+
       // Left column
       const leftColGeo = new THREE.BoxGeometry(colSide, colHeight, colSide);
       const leftCol = new THREE.Mesh(leftColGeo);
-      leftCol.position.set(-halfBeam, colHeight / 2, gz);
+      leftCol.position.set(-halfBeam, roadY + colHeight / 2, gz);
       leftCol.castShadow = true;
       leftCol.receiveShadow = true;
       this.group.add(leftCol);
@@ -35,7 +38,7 @@ export class TollPlaza extends BaseBridgePart {
       // Right column
       const rightColGeo = new THREE.BoxGeometry(colSide, colHeight, colSide);
       const rightCol = new THREE.Mesh(rightColGeo);
-      rightCol.position.set(halfBeam, colHeight / 2, gz);
+      rightCol.position.set(halfBeam, roadY + colHeight / 2, gz);
       rightCol.castShadow = true;
       rightCol.receiveShadow = true;
       this.group.add(rightCol);
@@ -43,7 +46,7 @@ export class TollPlaza extends BaseBridgePart {
       // Horizontal beam at top
       const beamGeo = new THREE.BoxGeometry(APPROACH.gantryW, 0.4, 0.8);
       const beam = new THREE.Mesh(beamGeo);
-      beam.position.set(0, colHeight + 0.2, gz);
+      beam.position.set(0, roadY + colHeight + 0.2, gz);
       beam.castShadow = true;
       beam.receiveShadow = true;
       this.group.add(beam);
@@ -54,7 +57,7 @@ export class TollPlaza extends BaseBridgePart {
         const sx = -halfBeam + (APPROACH.gantryW / (sensorCount - 1)) * s;
         const sensorGeo = new THREE.BoxGeometry(0.5, 0.3, 0.4);
         const sensor = new THREE.Mesh(sensorGeo);
-        sensor.position.set(sx, colHeight + 0.55, gz);
+        sensor.position.set(sx, roadY + colHeight + 0.55, gz);
         sensor.castShadow = true;
         sensor.receiveShadow = true;
         this.group.add(sensor);

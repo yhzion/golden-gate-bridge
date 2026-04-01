@@ -7,7 +7,7 @@ import { createMaterials } from '@/world/Materials';
 import { SkyController } from '@/world/SkyController';
 import { createWater } from '@/world/Water';
 import { createLighting } from '@/world/Lighting';
-import { createTerrain } from '@/world/TerrainGenerator';
+
 import { BridgeAssembler } from '@/landmarks/bridge/BridgeAssembler';
 import { landmarkRegistry } from '@/landmarks/index';
 import { FlightCamera } from '@/camera/FlightCamera';
@@ -21,7 +21,6 @@ import { MaterialUpdater } from '@/atmosphere/MaterialUpdater';
 import { LightingManager } from '@/lighting/LightingManager';
 import { HUD } from '@/ui/HUD';
 import { Clock } from '@/ui/Clock';
-import { DriveMode } from '@/drive/DriveMode';
 
 function init() {
   const prog = document.getElementById('prog') as HTMLElement;
@@ -41,7 +40,6 @@ function init() {
   const { sun: sunLight, hemisphere } = createLighting(sm.scene);
   prog.style.width = '45%';
 
-  createTerrain(sm.scene);
   prog.style.width = '55%';
 
   const ggb = new BridgeAssembler(mats);
@@ -62,6 +60,7 @@ function init() {
   prog.style.width = '75%';
 
   const timeOfDay = new TimeOfDay();
+  (window as any).__timeOfDay = timeOfDay;
   const weatherSystem = new WeatherSystem();
   const matUpdater = new MaterialUpdater(sm, water, skyCtrl.sky, sunLight, hemisphere);
   prog.style.width = '80%';
@@ -80,53 +79,10 @@ function init() {
   const postfx = new PostFXPipeline(sm.renderer, sm.scene, sm.camera, lightingManager);
   window.addEventListener('resize', () => postfx.resize());
 
-  // Drive mode
-  const driveMode = new DriveMode(sm.scene, sm.camera, mats);
-  driveMode.setBirdSystem(birds);
-  driveMode.load(); // async, non-blocking
-
-  const driveBtn = document.getElementById('driveBtn')!;
-  driveBtn.addEventListener('click', () => {
-    if (driveMode.isActive()) {
-      driveMode.exit();
-      driveBtn.textContent = 'DRIVE';
-    } else {
-      driveMode.enter(ggb.group);
-      driveBtn.textContent = 'EXIT DRIVE';
-    }
-  });
-
-  // Mouse move for drive mode
-  document.addEventListener('mousemove', (e) => {
-    if (driveMode.isActive()) {
-      driveMode.onMouseMove(e.movementX, e.movementY);
-    }
-  });
-
-  // Key handlers for drive mode
-  document.addEventListener('keydown', (e) => {
-    if (driveMode.isActive()) {
-      driveMode.onKeyDown(e.key);
-    }
-    if (e.key === 'm' || e.key === 'M') {
-      if (driveMode.isActive()) {
-        driveMode.exit();
-        driveBtn.textContent = 'DRIVE';
-      } else {
-        driveMode.enter(ggb.group);
-        driveBtn.textContent = 'EXIT DRIVE';
-      }
-    }
-  });
-
   input.setCallbacks(
     (n) => {
       if (n === 7) { weatherSystem.setWeather(WeatherType.Clear); return; }
-      if (n === 8) { weatherSystem.setWeather(WeatherType.Fog); return; }
       if (n === 9) { weatherSystem.setWeather(WeatherType.Rain); return; }
-    },
-    () => {
-      timeOfDay.paused = !timeOfDay.paused;
     },
     (key) => {
       if (key === 'L') {
@@ -147,17 +103,51 @@ function init() {
     }
   });
 
-  // Shot name display
+  // GTA5-style shot title display
   const shotLabel = document.getElementById('viewpoint-label');
-  flight.director.onShotChange = (name) => {
-    if (shotLabel) {
-      shotLabel.textContent = name;
+  const shotTitleMain = shotLabel?.querySelector('.title-main') as HTMLElement | null;
+  const shotTitleSub = shotLabel?.querySelector('.title-sub') as HTMLElement | null;
+  let shotTitleTimer = 0;
+
+  flight.director.onShotChange = (info) => {
+    if (!shotLabel || !shotTitleMain || !shotTitleSub) return;
+
+    // Clear previous state
+    clearTimeout(shotTitleTimer);
+    shotLabel.style.opacity = '0';
+    shotLabel.className = '';
+
+    // Small delay to reset animation before re-triggering
+    requestAnimationFrame(() => {
+      const pos = info.titlePosition ?? 'bottom-left';
+      const anim = info.titleAnimation ?? 'slide-up';
+
+      shotTitleMain.textContent = info.name;
+      shotTitleSub.textContent = info.subtitle ?? '';
+      shotTitleSub.style.display = info.subtitle ? '' : 'none';
+
+      shotLabel.className = `pos-${pos} anim-${anim}`;
       shotLabel.style.opacity = '1';
-      setTimeout(() => (shotLabel.style.opacity = '0'), 2000);
-    }
+
+      // Force reflow so animation restarts
+      void shotLabel.offsetWidth;
+      shotLabel.classList.add('visible');
+
+      shotTitleTimer = window.setTimeout(() => {
+        shotLabel.classList.remove('visible');
+        shotLabel.style.opacity = '0';
+      }, 3000);
+    });
   };
-  // Fire initial shot name
-  flight.director.onShotChange(CINEMATIC_SHOTS[0].name);
+
+  // Fire initial shot
+  const firstShot = CINEMATIC_SHOTS[0];
+  flight.director.onShotChange({
+    name: firstShot.name,
+    subtitle: firstShot.subtitle,
+    titlePosition: firstShot.titlePosition,
+    titleAnimation: firstShot.titleAnimation,
+  });
 
   // UI — help toggle
   const helpToggle = document.getElementById('helpToggle');
@@ -180,7 +170,6 @@ function init() {
 
   loop.register((dt, elapsed) => {
     water.material.uniforms['time'].value = elapsed * 0.4;
-    water.material.uniforms['glitterTime'].value = elapsed * 0.6;
 
     const timeState = timeOfDay.update(dt);
     const weatherState = weatherSystem.update(dt);
@@ -193,20 +182,10 @@ function init() {
     // Bridge updatable parts
     ggb.update(dt, elapsed);
 
-    const nightFactor = 1 - Math.min(timeState.sunIntensity / 0.25, 1);
-
-    if (driveMode.isActive()) {
-      driveMode.update(dt, elapsed, timeState);
-    } else {
-      flight.update(dt);
-      vehicles.update(dt);
-      cityscape.update(dt, elapsed);
-      birds.update(dt, elapsed);
-    }
-
-    // HUD visibility
-    const flightHud = document.getElementById('hud')!;
-    flightHud.style.display = driveMode.isActive() ? 'none' : '';
+    flight.update(dt);
+    vehicles.update(dt);
+    cityscape.update(dt, elapsed);
+    birds.update(dt, elapsed);
 
     clock.update(dt);
 

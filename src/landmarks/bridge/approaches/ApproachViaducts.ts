@@ -50,16 +50,13 @@ export class ApproachViaducts extends BaseBridgePart {
       const t = numSpans > 0 ? i / numSpans : 0; // 0..1 along viaduct
       const colZ = startZ + direction * spanLen * i;
 
-      // Sinusoidal height variation: shorter at ends, taller in middle
-      const sinFactor = Math.sin(Math.PI * t); // 0 at ends, 1 at middle
-      const minColH = 3;
-      const maxColH = BRIDGE.deckH - 5;
-      const colH = minColH + (maxColH - minColH) * sinFactor;
+      // Column height: full height from ground to deck underside
+      const colH = BRIDGE.deckH - 0.5; // deck slab thickness is 0.5
 
-      // Left column
+      // Left column — bottom at y=0, top at deck underside
       const leftColGeo = new THREE.BoxGeometry(colW, colH, colD);
       const leftCol = new THREE.Mesh(leftColGeo);
-      leftCol.position.set(-colXOffset, (BRIDGE.deckH - colH) / 2 + colH / 2, colZ);
+      leftCol.position.set(-colXOffset, colH / 2, colZ);
       leftCol.castShadow = true;
       leftCol.receiveShadow = true;
       this.group.add(leftCol);
@@ -67,7 +64,7 @@ export class ApproachViaducts extends BaseBridgePart {
       // Right column
       const rightColGeo = new THREE.BoxGeometry(colW, colH, colD);
       const rightCol = new THREE.Mesh(rightColGeo);
-      rightCol.position.set(colXOffset, (BRIDGE.deckH - colH) / 2 + colH / 2, colZ);
+      rightCol.position.set(colXOffset, colH / 2, colZ);
       rightCol.castShadow = true;
       rightCol.receiveShadow = true;
       this.group.add(rightCol);

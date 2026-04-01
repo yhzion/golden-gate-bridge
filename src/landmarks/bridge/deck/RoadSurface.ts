@@ -18,6 +18,12 @@ export class RoadSurface extends BaseBridgePart {
   buildGeometry(): void {
     const { mainSpan, sideSpan, deckH, deckW } = BRIDGE;
 
+    // Tower exclusion zones — median barrier breaks at tower positions
+    const towerZs = [0, mainSpan];
+    const towerExclusion = 5;
+    const isNearTower = (z: number) =>
+      towerZs.some((tz) => Math.abs(z - tz) < towerExclusion);
+
     const zStart = -sideSpan;
     const zEnd = mainSpan + sideSpan;
     const totalLen = zEnd - zStart;
@@ -93,6 +99,14 @@ export class RoadSurface extends BaseBridgePart {
     const dummy = new THREE.Object3D();
     for (let i = 0; i < barrierCount; i++) {
       const z = zStart + i * barrierSpacing + 0.5;
+      if (isNearTower(z)) {
+        dummy.position.set(0, -1000, 0);
+        dummy.scale.set(0, 0, 0);
+        dummy.updateMatrix();
+        barrierMesh.setMatrixAt(i, dummy.matrix);
+        dummy.scale.set(1, 1, 1);
+        continue;
+      }
       dummy.position.set(0, deckH + 0.4, z);
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();

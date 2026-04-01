@@ -22,6 +22,12 @@ export class MaterialUpdater {
   private ambientLight: THREE.AmbientLight | null = null;
   private cached: CachedMaterial[] = [];
   private cacheBuilt = false;
+  private _sunDir = new THREE.Vector3();
+  private _waterColor = new THREE.Color();
+  private _lastSunElevation = -999;
+  private _lastSunAzimuth = -999;
+  private _waterColorBase = new THREE.Color(0x0a3050);
+  private _waterColorTarget = new THREE.Color(0x1a4a6a);
 
   constructor(
     sm: SceneManager,
@@ -63,9 +69,6 @@ export class MaterialUpdater {
       const isAviation = hasEmissive && mat.emissive.r > 0.8 && mat.emissive.g < 0.2; // red
       const isLight = hasEmissive && !isAviation; // amber lanterns, headlights
 
-      // Zero out envMap — no HDR environment reflections
-      mat.envMapIntensity = 0;
-
       this.cached.push({
         mat,
         baseEmissiveIntensity: mat.emissiveIntensity,
@@ -78,10 +81,19 @@ export class MaterialUpdater {
   update(time: TimeState, weather: WeatherState, dt: number) {
     this.buildCache();
 
-    // Sun position
+    // Sun position (reuse scratch vector)
     const phi = THREE.MathUtils.degToRad(90 - time.sunElevation);
     const theta = THREE.MathUtils.degToRad(time.sunAzimuth);
-    const sunDir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+    const sunDir = this._sunDir.setFromSphericalCoords(1, phi, theta);
+
+    // Only re-render shadow map when sun position changes meaningfully
+    const elevDelta = Math.abs(time.sunElevation - this._lastSunElevation);
+    const azDelta = Math.abs(time.sunAzimuth - this._lastSunAzimuth);
+    if (elevDelta > 0.5 || azDelta > 0.5) {
+      this._lastSunElevation = time.sunElevation;
+      this._lastSunAzimuth = time.sunAzimuth;
+      this.sm.renderer.shadowMap.needsUpdate = true;
+    }
 
     // Sky uniforms (visual sky dome only, not used for lighting)
     const skyU = this.sky.material.uniforms;
@@ -94,29 +106,26 @@ export class MaterialUpdater {
     this.sunLight.intensity = time.sunIntensity;
     this.sunLight.position.copy(sunDir).multiplyScalar(600);
 
-    // Ambient
+    // Ambient — ensure minimum city-level ambient even at full night
     if (this.ambientLight) {
-      this.ambientLight.intensity = time.ambientIntensity;
+      this.ambientLight.intensity = Math.max(time.ambientIntensity, 0.25);
     }
 
     // Hemisphere
     this.hemisphereLight.intensity = time.hemisphereIntensity;
 
-    // Water
-    this.water.material.uniforms['sunDirection'].value.copy(sunDir).normalize();
-
-    // Fog
-    const fogDensity = time.fogDensity * weather.fogMultiplier;
-    if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.density = fogDensity;
-      this.scene.fog.color.copy(time.fogColor);
-    }
-
     // Exposure
     this.sm.renderer.toneMappingExposure = time.exposure;
 
     // Night factor: 0 = full day, 1 = full night
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 1.0, 0, 1);
+
+    // Water — boost reflectivity at night for visible waves
+    this.water.material.uniforms['sunDirection'].value.copy(sunDir).normalize();
+    const waterDistortion = THREE.MathUtils.lerp(4.5, 6.0, nightFactor);
+    this.water.material.uniforms['distortionScale'].value = waterDistortion;
+    this._waterColor.copy(this._waterColorBase).lerp(this._waterColorTarget, nightFactor * 0.5);
+    this.water.material.uniforms['waterColor'].value.copy(this._waterColor);
 
     // Hide Sky dome at night — celestial system provides the night sky
     this.sky.visible = nightFactor < 0.5;
@@ -124,9 +133,12 @@ export class MaterialUpdater {
     // Update cached materials
     for (const entry of this.cached) {
       if (entry.isLight) {
-        // Off during day, base intensity at night (clamped to LDR)
-        entry.mat.emissiveIntensity = nightFactor * Math.min(entry.baseEmissiveIntensity, 0.9);
+        // Off during day, boosted intensity at night
+        entry.mat.emissiveIntensity = nightFactor * Math.min(entry.baseEmissiveIntensity * 2.0, 2.0);
       }
+
+      // Allow some envMap contribution at night for ambient visibility
+      entry.mat.envMapIntensity = time.envMapIntensity;
 
       // Aviation beacons are now controlled by SafetyLights strobe system
     }

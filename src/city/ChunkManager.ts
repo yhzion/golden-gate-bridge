@@ -24,6 +24,7 @@ interface ChunkData {
 export class ChunkManager {
   private scene: THREE.Scene;
   private activeChunks = new Map<string, ChunkData>();
+  private loadQueue: { cx: number; cz: number; lod: number }[] = [];
   private glassMat: THREE.MeshPhysicalMaterial;
   private concreteMat: THREE.MeshStandardMaterial;
   private roadMat: THREE.MeshStandardMaterial;
@@ -64,10 +65,18 @@ export class ChunkManager {
           const key = `${cx},${cz}`;
           if (!this.activeChunks.has(key)) {
             const lod = dist < LOD0_RANGE ? 0 : 1;
-            this.loadChunk(cx, cz, lod);
+            this.loadQueue.push({ cx, cz, lod });
+            // Reserve the key so it won't be queued again
+            this.activeChunks.set(key, { cx, cz, key, lod, group: new THREE.Group() });
           }
         }
       }
+    }
+
+    // Process at most 1 chunk per frame to avoid synchronous stalls
+    if (this.loadQueue.length > 0) {
+      const job = this.loadQueue.shift()!;
+      this.loadChunk(job.cx, job.cz, job.lod);
     }
 
     // Unload far chunks
@@ -97,6 +106,7 @@ export class ChunkManager {
       this.activeChunks.set(key, { cx, cz, key, lod, group });
       return;
     }
+
 
     // Road grid
     this.addRoads(group, worldX, worldZ, zone.type);
@@ -224,6 +234,7 @@ export class ChunkManager {
   }
 
   dispose() {
+    this.loadQueue.length = 0;
     for (const key of [...this.activeChunks.keys()]) {
       this.unloadChunk(key);
     }

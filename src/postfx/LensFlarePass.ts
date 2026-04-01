@@ -29,14 +29,14 @@ const LensFlareShader = {
 
     varying vec2 vUv;
 
-    float starFlare(vec2 uv, vec2 center, float size) {
+    float softGlow(vec2 uv, vec2 center, float size) {
       vec2 d = (uv - center) * vec2(aspectRatio, 1.0);
       float dist = length(d);
-      float core = exp(-dist * dist / (size * size * 0.002));
-      float angle = atan(d.y, d.x);
-      float star = pow(abs(cos(angle * 2.0)), 40.0) * exp(-dist / (size * 0.15));
-      float streak = exp(-abs(d.y) / (size * 0.003)) * exp(-abs(d.x) / (size * 0.08));
-      return core * 0.6 + star * 0.25 + streak * 0.15;
+      // Bright compact core (the visible bulb)
+      float core = exp(-dist * dist / (size * size * 0.0008));
+      // Wide soft halo spreading far
+      float halo = 0.15 / (1.0 + dist * dist / (size * size * 0.01));
+      return core * 0.5 + halo * 0.5;
     }
 
     void main() {
@@ -46,7 +46,7 @@ const LensFlareShader = {
       for (int i = 0; i < ${MAX_FLARES}; i++) {
         if (i >= numFlares) break;
         if (flareIntensities[i] < 0.01) continue;
-        float f = starFlare(vUv, flarePositions[i], 1.0);
+        float f = softGlow(vUv, flarePositions[i], 1.0);
         flare += flareColors[i] * f * flareIntensities[i];
       }
 

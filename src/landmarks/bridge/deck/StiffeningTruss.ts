@@ -29,12 +29,15 @@ export class StiffeningTruss extends BaseBridgePart {
 
     const sides = [-deckW / 2, deckW / 2];
 
-    // Chord IBeam shape
+    // Tower exclusion zones — truss members don't pass through tower columns
+    const towerZs = [0, mainSpan];
+    const towerExclusion = 5; // ±5m around each tower centre
+    const isNearTower = (z: number) =>
+      towerZs.some((tz) => Math.abs(z - tz) < towerExclusion);
+
+    // Build chord segments that skip tower exclusion zones
+    const chordSegments = this.buildSegments(zStart, zEnd, towerZs, towerExclusion);
     const chordShape = createIBeamShape(0.4, 0.5, 0.08, 0.1);
-    const chordExtrudeSettings: THREE.ExtrudeGeometryOptions = {
-      depth: totalLen,
-      bevelEnabled: false,
-    };
 
     // Diagonal LAngle shape
     const diagShape = createLAngleShape(0.2, 0.2, 0.025);
@@ -50,22 +53,25 @@ export class StiffeningTruss extends BaseBridgePart {
     const vertGeo = new THREE.BoxGeometry(DECK.trussThick, trussH, DECK.trussThick);
 
     for (const sideX of sides) {
-      // Top chord
-      const topChordGeo = new THREE.ExtrudeGeometry(chordShape, chordExtrudeSettings);
-      // ExtrudeGeometry extrudes along Z; we want it along Z already, just position it
-      const topChordMesh = new THREE.Mesh(topChordGeo);
-      topChordMesh.position.set(sideX, deckH, zStart);
-      topChordMesh.castShadow = true;
-      topChordMesh.receiveShadow = true;
-      this.group.add(topChordMesh);
+      // Top & bottom chords — one segment per gap-free span
+      for (const seg of chordSegments) {
+        const segLen = seg.z1 - seg.z0;
+        const segSettings: THREE.ExtrudeGeometryOptions = { depth: segLen, bevelEnabled: false };
 
-      // Bottom chord
-      const botChordGeo = new THREE.ExtrudeGeometry(chordShape, chordExtrudeSettings);
-      const botChordMesh = new THREE.Mesh(botChordGeo);
-      botChordMesh.position.set(sideX, deckH - trussH, zStart);
-      botChordMesh.castShadow = true;
-      botChordMesh.receiveShadow = true;
-      this.group.add(botChordMesh);
+        const topGeo = new THREE.ExtrudeGeometry(chordShape, segSettings);
+        const topMesh = new THREE.Mesh(topGeo);
+        topMesh.position.set(sideX, deckH, seg.z0);
+        topMesh.castShadow = true;
+        topMesh.receiveShadow = true;
+        this.group.add(topMesh);
+
+        const botGeo = new THREE.ExtrudeGeometry(chordShape, segSettings);
+        const botMesh = new THREE.Mesh(botGeo);
+        botMesh.position.set(sideX, deckH - trussH, seg.z0);
+        botMesh.castShadow = true;
+        botMesh.receiveShadow = true;
+        this.group.add(botMesh);
+      }
 
       // Diagonals — alternating ascending/descending
       const diagCount = panelCount * 2; // one per direction per panel
@@ -81,6 +87,17 @@ export class StiffeningTruss extends BaseBridgePart {
 
       for (let i = 0; i < panelCount; i++) {
         const zPanel = zStart + i * panelLen;
+
+        if (isNearTower(zPanel)) {
+          // Hide instances in tower exclusion zone
+          dummy.position.set(0, -1000, 0);
+          dummy.scale.set(0, 0, 0);
+          dummy.updateMatrix();
+          diagMesh.setMatrixAt(instanceIdx++, dummy.matrix);
+          diagMesh.setMatrixAt(instanceIdx++, dummy.matrix);
+          dummy.scale.set(1, 1, 1);
+          continue;
+        }
 
         // Ascending diagonal: bottom-left to top-right
         dummy.position.set(sideX, deckH - trussH, zPanel);
@@ -104,6 +121,14 @@ export class StiffeningTruss extends BaseBridgePart {
 
       for (let i = 0; i <= panelCount; i++) {
         const zPanel = zStart + i * panelLen;
+        if (isNearTower(zPanel)) {
+          dummy.position.set(0, -1000, 0);
+          dummy.scale.set(0, 0, 0);
+          dummy.updateMatrix();
+          vertMesh.setMatrixAt(i, dummy.matrix);
+          dummy.scale.set(1, 1, 1);
+          continue;
+        }
         dummy.position.set(sideX, deckH - trussH / 2, zPanel);
         dummy.rotation.set(0, 0, 0);
         dummy.updateMatrix();
@@ -112,6 +137,18 @@ export class StiffeningTruss extends BaseBridgePart {
       vertMesh.instanceMatrix.needsUpdate = true;
       this.group.add(vertMesh);
     }
+  }
+
+  private buildSegments(zStart: number, zEnd: number, towerZs: number[], ex: number): { z0: number; z1: number }[] {
+    const cuts = towerZs.map((tz) => ({ lo: tz - ex, hi: tz + ex })).sort((a, b) => a.lo - b.lo);
+    const segs: { z0: number; z1: number }[] = [];
+    let cursor = zStart;
+    for (const c of cuts) {
+      if (cursor < c.lo) segs.push({ z0: cursor, z1: c.lo });
+      cursor = Math.max(cursor, c.hi);
+    }
+    if (cursor < zEnd) segs.push({ z0: cursor, z1: zEnd });
+    return segs;
   }
 
   applyMaterials(mats: BridgeMaterials): void {

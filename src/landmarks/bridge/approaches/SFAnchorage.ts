@@ -17,20 +17,23 @@ export class SFAnchorage extends BaseBridgePart {
     const anchorZ = -(BRIDGE.sideSpan + APPROACH.sfAncD / 2);
     const steps = APPROACH.sfAncSteps;
 
-    // 4 stepped tiers, each progressively smaller
+    // 4 stepped tiers stacking upward like a pyramid, total reaching deck height
+    const totalH = BRIDGE.deckH; // anchorage reaches up to deck level
+    let yAccum = 0;
+
     for (let step = 0; step < steps; step++) {
       const scale = 1 - step * 0.15;
       const w = APPROACH.sfAncW * scale;
-      const h = APPROACH.sfAncH * (1 - step * 0.1);
+      const tierH = totalH / steps; // evenly divide height
       const d = APPROACH.sfAncD * scale;
-      const yOffset = step * 2; // stack tiers upward
 
-      const tierGeo = new THREE.BoxGeometry(w, h, d);
+      const tierGeo = new THREE.BoxGeometry(w, tierH, d);
       const tier = new THREE.Mesh(tierGeo);
-      tier.position.set(0, yOffset + h / 2, anchorZ);
+      tier.position.set(0, yAccum + tierH / 2, anchorZ);
       tier.castShadow = true;
       tier.receiveShadow = true;
       this.group.add(tier);
+      yAccum += tierH;
     }
 
     // Cable entry portals on north face (facing toward bridge, positive z side)

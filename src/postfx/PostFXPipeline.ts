@@ -4,7 +4,6 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { VolumetricFogPass } from './VolumetricFogPass';
 import { GodRaysPass } from './GodRaysPass';
 import { LensFlarePass } from './LensFlarePass';
 import type { LightingManager } from '@/lighting/LightingManager';
@@ -37,7 +36,6 @@ const ColorGradeShader = {
 export class PostFXPipeline {
   composer: EffectComposer;
   bloom: UnrealBloomPass;
-  volumetricFog: VolumetricFogPass;
   godRays: GodRaysPass;
   lensFlare: LensFlarePass;
 
@@ -45,7 +43,6 @@ export class PostFXPipeline {
   private camera: THREE.Camera;
   private lightingManager: LightingManager | null;
   private renderPass: RenderPass;
-  private depthRenderTarget: THREE.WebGLRenderTarget;
 
   // Scratch objects to avoid per-frame allocations
   private _sunDir = new THREE.Vector3();
@@ -58,6 +55,8 @@ export class PostFXPipeline {
   private _screenPositions: THREE.Vector2[] = [];
   private _screenColors: THREE.Color[] = [];
   private _screenIntensities: number[] = [];
+  // Pre-allocated pool for screen positions (max 8 lights)
+  private _screenPosPool: THREE.Vector2[] = Array.from({ length: 8 }, () => new THREE.Vector2());
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -69,24 +68,10 @@ export class PostFXPipeline {
     this.camera = camera;
     this.lightingManager = lightingManager;
 
-    // Separate depth target for volumetric fog (only rendered when fog is active)
-    const depthTex = new THREE.DepthTexture(innerWidth, innerHeight);
-    depthTex.format = THREE.DepthFormat;
-    depthTex.type = THREE.UnsignedIntType;
-    this.depthRenderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
-      depthTexture: depthTex,
-      depthBuffer: true,
-    });
-
     this.composer = new EffectComposer(renderer);
 
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
-
-    this.volumetricFog = new VolumetricFogPass(renderer, camera);
-    this.volumetricFog.setDepthTexture(depthTex);
-    this.volumetricFog.enabled = false;
-    this.composer.addPass(this.volumetricFog);
 
     this.godRays = new GodRaysPass();
     this.godRays.enabled = false;
@@ -109,21 +94,19 @@ export class PostFXPipeline {
   updateLighting(timeState: TimeState, weatherState: WeatherState): void {
     if (!this.lightingManager) return;
 
-    const nightFactor = 1 - THREE.MathUtils.clamp(timeState.sunIntensity / 0.25, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(timeState.sunIntensity / 1.0, 0, 1);
     const tier = this.lightingManager.qualityTier.getCurrentTier();
 
-    const fogActive = weatherState.fogMultiplier > 2;
-    if (nightFactor > 0.7 && fogActive) {
-      this.bloom.threshold = 0.4;
-      this.bloom.strength = 0.8;
-    } else if (nightFactor > 0.5) {
-      this.bloom.threshold = 0.5;
-      this.bloom.strength = 0.5;
+    if (nightFactor > 0.5) {
+      this.bloom.enabled = true;
+      this.bloom.threshold = 0.85;
+      this.bloom.strength = 0.12;
     } else if (nightFactor > 0.2) {
-      this.bloom.threshold = 0.7;
-      this.bloom.strength = 0.3;
+      this.bloom.enabled = true;
+      this.bloom.threshold = 0.9;
+      this.bloom.strength = 0.06;
     } else {
-      this.bloom.strength = 0;
+      this.bloom.enabled = false;
     }
 
     // Cache light queries once per frame (avoids repeated clone/spread allocations)
@@ -132,19 +115,6 @@ export class PostFXPipeline {
       this._cachedPositions = this.lightingManager.getLightPositions();
       this._cachedColors = this.lightingManager.getLightColors();
       this._cachedIntensities = this.lightingManager.getLightIntensities();
-    }
-
-    const volEnabled = this.volumetricFog.isVolumetricEnabled()
-      && nightFactor > 0.2
-      && tier !== 'low';
-    this.volumetricFog.enabled = volEnabled;
-
-    if (volEnabled) {
-      this.volumetricFog.setLights(this._cachedPositions, this._cachedColors, this._cachedIntensities);
-
-      const baseDensity = timeState.fogDensity * weatherState.fogMultiplier;
-      const volDensity = baseDensity * (nightFactor > 0.5 ? 3.0 : 1.0);
-      this.volumetricFog.setFogParams(volDensity, timeState.fogColor, 0.7);
     }
 
     const godRayEnabled = this.godRays.isGodRaysEnabled()
@@ -162,10 +132,10 @@ export class PostFXPipeline {
         this._sunWorldPos.copy(this._sunDir).multiplyScalar(5000).add(this.camera.position);
         this.godRays.setLightWorldPos(this._sunWorldPos, this.camera);
         this.godRays.setIntensity(0.3);
-      } else if (nightFactor > 0.5 && weatherState.fogMultiplier > 2) {
+      } else if (nightFactor > 0.5) {
         if (this._cachedPositions.length > 0) {
           this.godRays.setLightWorldPos(this._cachedPositions[0], this.camera);
-          this.godRays.setIntensity(0.8);
+          this.godRays.setIntensity(0.15);
         }
       } else {
         this.godRays.setIntensity(0);
@@ -176,29 +146,25 @@ export class PostFXPipeline {
     this.lensFlare.enabled = flareEnabled;
 
     if (flareEnabled) {
-      this._screenPositions.length = 0;
-      this._screenColors.length = 0;
-      this._screenIntensities.length = 0;
+      let flareCount = 0;
 
       for (let i = 0; i < this._cachedPositions.length; i++) {
         this._ndc.copy(this._cachedPositions[i]).project(this.camera);
         if (this._ndc.z > 1 || Math.abs(this._ndc.x) > 1.2 || Math.abs(this._ndc.y) > 1.2) continue;
-        this._screenPos.set(this._ndc.x * 0.5 + 0.5, this._ndc.y * 0.5 + 0.5);
-        this._screenPositions.push(this._screenPos.clone());
-        this._screenColors.push(this._cachedColors[i]);
-        this._screenIntensities.push(this._cachedIntensities[i] * nightFactor * 0.15);
+        this._screenPosPool[flareCount].set(this._ndc.x * 0.5 + 0.5, this._ndc.y * 0.5 + 0.5);
+        this._screenPositions[flareCount] = this._screenPosPool[flareCount];
+        this._screenColors[flareCount] = this._cachedColors[i];
+        this._screenIntensities[flareCount] = this._cachedIntensities[i] * nightFactor * 0.03;
+        flareCount++;
       }
+      this._screenPositions.length = flareCount;
+      this._screenColors.length = flareCount;
+      this._screenIntensities.length = flareCount;
       this.lensFlare.setFlares(this._screenPositions, this._screenColors, this._screenIntensities);
     }
   }
 
   render(): void {
-    if (this.volumetricFog.enabled) {
-      const currentRT = this.renderer.getRenderTarget();
-      this.renderer.setRenderTarget(this.depthRenderTarget);
-      this.renderer.render(this.renderPass.scene, this.camera);
-      this.renderer.setRenderTarget(currentRT);
-    }
     this.composer.render();
   }
 
@@ -206,13 +172,9 @@ export class PostFXPipeline {
     const w = innerWidth;
     const h = innerHeight;
     this.composer.setSize(w, h);
-    this.depthRenderTarget.setSize(w, h);
   }
 
   dispose(): void {
-    this.depthRenderTarget.depthTexture?.dispose();
-    this.depthRenderTarget.dispose();
-    this.volumetricFog.dispose();
     this.godRays.dispose();
     this.lensFlare.dispose();
   }

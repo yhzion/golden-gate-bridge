@@ -7,7 +7,6 @@ export class SceneManager {
 
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0xc8bfaa, 0.00008);
 
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 80000);
     this.camera.position.set(-400, 180, -250);
@@ -22,6 +21,7 @@ export class SceneManager {
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(this.renderer.domElement);
 

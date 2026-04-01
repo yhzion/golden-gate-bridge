@@ -5,11 +5,27 @@ export interface ShotKeyframe {
   lookAt: [number, number, number];
 }
 
+export type TitlePosition =
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'center'
+  | 'top-right'
+  | 'top-left';
+
+export type TitleAnimation =
+  | 'slide-up'
+  | 'slide-left'
+  | 'slide-right'
+  | 'fade';
+
 export interface ShotConfig {
   name: string;
   duration: number;
   keyframes: ShotKeyframe[];
   easing?: 'linear' | 'easeInOut';
+  subtitle?: string;
+  titlePosition?: TitlePosition;
+  titleAnimation?: TitleAnimation;
 }
 
 export class CinematicShot {

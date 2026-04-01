@@ -24,6 +24,12 @@ export class FloorSystem extends BaseBridgePart {
     const panelCount = Math.floor(totalLen / panelLen);
     const beamY = deckH - floorBeamH / 2;
 
+    // Tower exclusion zones — floor beams break at tower column positions
+    const towerZs = [0, mainSpan];
+    const towerExclusion = 5;
+    const isNearTower = (z: number) =>
+      towerZs.some((tz) => Math.abs(z - tz) < towerExclusion);
+
     // --- Floor beams (transverse I-beams) ---
     const beamShape = createIBeamShape(0.4, floorBeamH, floorBeamWebT, floorBeamFlangeT);
     const beamExtrudeSettings: THREE.ExtrudeGeometryOptions = {
@@ -41,6 +47,14 @@ export class FloorSystem extends BaseBridgePart {
     const dummy = new THREE.Object3D();
     for (let i = 0; i <= panelCount; i++) {
       const z = zStart + i * panelLen;
+      if (isNearTower(z)) {
+        dummy.position.set(0, -1000, 0);
+        dummy.scale.set(0, 0, 0);
+        dummy.updateMatrix();
+        floorBeamMesh.setMatrixAt(i, dummy.matrix);
+        dummy.scale.set(1, 1, 1);
+        continue;
+      }
       // After rotating around Y, extrusion runs along -X direction;
       // offset by +deckW/2 so beam is centered on x=0
       dummy.position.set(deckW / 2, beamY, z);
@@ -51,18 +65,34 @@ export class FloorSystem extends BaseBridgePart {
     floorBeamMesh.instanceMatrix.needsUpdate = true;
     this.group.add(floorBeamMesh);
 
-    // --- Longitudinal stringers ---
+    // --- Longitudinal stringers — split at tower positions ---
     const stringerXs = [-10.5, -7.5, -4.5, 0, 4.5, 7.5, 10.5];
-    const stringerGeo = new THREE.BoxGeometry(stringerW, stringerH, totalLen);
     const stringerY = deckH - floorBeamH - stringerH / 2;
+    const segments = this.buildSegments(zStart, zEnd, towerZs, towerExclusion);
 
     for (const sx of stringerXs) {
-      const mesh = new THREE.Mesh(stringerGeo);
-      mesh.position.set(sx, stringerY, zStart + totalLen / 2);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      this.group.add(mesh);
+      for (const seg of segments) {
+        const segLen = seg.z1 - seg.z0;
+        const geo = new THREE.BoxGeometry(stringerW, stringerH, segLen);
+        const mesh = new THREE.Mesh(geo);
+        mesh.position.set(sx, stringerY, seg.z0 + segLen / 2);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.group.add(mesh);
+      }
     }
+  }
+
+  private buildSegments(zStart: number, zEnd: number, towerZs: number[], ex: number): { z0: number; z1: number }[] {
+    const cuts = towerZs.map((tz) => ({ lo: tz - ex, hi: tz + ex })).sort((a, b) => a.lo - b.lo);
+    const segs: { z0: number; z1: number }[] = [];
+    let cursor = zStart;
+    for (const c of cuts) {
+      if (cursor < c.lo) segs.push({ z0: cursor, z1: c.lo });
+      cursor = Math.max(cursor, c.hi);
+    }
+    if (cursor < zEnd) segs.push({ z0: cursor, z1: zEnd });
+    return segs;
   }
 
   applyMaterials(mats: BridgeMaterials): void {

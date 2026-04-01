@@ -19,15 +19,16 @@ export class MarinAnchorage extends BaseBridgePart {
     const h = APPROACH.marinAncH;
     const d = APPROACH.marinAncD;
 
-    // Main concrete mass, partially below grade (y offset slightly below 0)
-    const massGeo = new THREE.BoxGeometry(w, h, d);
+    // Main concrete mass: extends from ground (-3m below grade) up to deck level
+    const massH = BRIDGE.deckH + 3; // from y=-3 to y=deckH
+    const massGeo = new THREE.BoxGeometry(w, massH, d);
     const mass = new THREE.Mesh(massGeo);
-    mass.position.set(0, h / 2 - 3, anchorZ); // partially below grade
+    mass.position.set(0, massH / 2 - 3, anchorZ); // bottom at y=-3, top at y=deckH
     mass.castShadow = true;
     mass.receiveShadow = true;
     this.group.add(mass);
 
-    // Cable entry portals on south face (facing toward bridge, negative z side)
+    // Cable entry portals on south face (at deck level)
     const southFaceZ = anchorZ - d / 2;
     const portalCableXs = [-5, 5];
     for (const cx of portalCableXs) {
@@ -35,7 +36,7 @@ export class MarinAnchorage extends BaseBridgePart {
       const portal = new THREE.Mesh(portalGeo);
       // Rotate to open toward -z (south)
       portal.rotation.set(-Math.PI / 2, 0, 0);
-      portal.position.set(cx, BRIDGE.deckH + 2, southFaceZ);
+      portal.position.set(cx, BRIDGE.deckH, southFaceZ);
       portal.castShadow = true;
       portal.receiveShadow = true;
       this.group.add(portal);

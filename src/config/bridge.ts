@@ -12,7 +12,7 @@ export const BRIDGE = {
 } as const;
 
 export const LANE_W = 3.0;
-export const LANES = [-6.75, -3.75, -0.75, 0.75, 3.75, 6.75] as const;
+export const LANES = [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5] as const;
 
 export const CAR_COLORS = [
   0xffffff, 0xffffff, 0xcccccc, 0xbbbbbb, 0x222222, 0x111111,
@@ -20,19 +20,19 @@ export const CAR_COLORS = [
 ] as const;
 
 export const TOWER = {
-  colSpacing: 15.7,
-  baseW: 8,
+  colSpacing: 31.4,
+  baseW: 7,
   baseD: 5.5,
-  flangeW: 2.8,
+  flangeW: 2.4,
   flangeD: 2.0,
   sections: [
-    { y0: -15, h: 82, scale: 1.25 },
+    { y0: -15, h: 82, scale: 1.1 },
     { y0: 67, h: 45, scale: 1.0 },
     { y0: 112, h: 45, scale: 0.88 },
     { y0: 157, h: 40, scale: 0.78 },
     { y0: 197, h: 30, scale: 0.7 },
   ],
-  portalYs: [67, 112, 157, 197, 225] as readonly number[],
+  portalYs: [85, 112, 157, 197, 225] as readonly number[],
   portalH: 3.5,
   cellsPerSection: 4,
   cellH: 16,
@@ -100,17 +100,4 @@ export const TILE = {
   lodFadeEnd: 6500,
   /** World recentering threshold */
   recenterThreshold: 5000,
-} as const;
-
-export const DRIVE = {
-  /** Player speed in m/s (~90 km/h) */
-  speed: 25,
-  /** Player lane index (right lane 2, 0-indexed) */
-  laneIdx: 4,  // LANES[4] = 3.75
-  /** Camera height above road for 1st person */
-  eyeH: 1.2,
-  /** 3rd person camera offset behind car */
-  thirdPersonBack: 5,
-  /** 3rd person camera offset above car */
-  thirdPersonUp: 2,
 } as const;

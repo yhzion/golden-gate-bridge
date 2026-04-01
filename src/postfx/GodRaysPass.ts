@@ -66,6 +66,7 @@ export class GodRaysPass extends Pass {
   private fsQuad: FullScreenQuad;
   private material: THREE.ShaderMaterial;
   private _enabled = true;
+  private _ndc = new THREE.Vector3();
 
   constructor() {
     super();
@@ -78,7 +79,7 @@ export class GodRaysPass extends Pass {
   }
 
   setLightWorldPos(worldPos: THREE.Vector3, camera: THREE.Camera): void {
-    const ndc = worldPos.clone().project(camera);
+    const ndc = this._ndc.copy(worldPos).project(camera);
     if (ndc.z > 1) {
       this.material.uniforms['lightVisible'].value = 0;
       return;

@@ -27,7 +27,7 @@ export class FortPointArch extends BaseBridgePart {
     for (let i = 0; i <= numPts; i++) {
       const t = (i / numPts) * 2 - 1; // -1 to +1
       const z = t * halfSpan + archCenterZ;
-      const y = BRIDGE.deckH + rise * (1 - t * t); // parabola peak at t=0
+      const y = BRIDGE.deckH - rise * (1 - t * t); // parabola hangs below deck
 
       leftPoints.push(new THREE.Vector3(-ribX, y, z));
       rightPoints.push(new THREE.Vector3(ribX, y, z));
