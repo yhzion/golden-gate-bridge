@@ -46,14 +46,11 @@ export class RoadFurniture {
     const radialTreesPerSide = Math.floor(1000 / FURNITURE.treeSpacingRadial); // 50
     const radialTreeOffset = ROAD.radialWidth / 2 - 0.5;                       // 6.5
 
-    // Total instance count:
-    // Circular: circTreeCount * 2 (outer + inner)
-    // Radial: radialTreesPerSide * 2 sides * radialCount roads
+    // Instance counts per group
     const circularTotal = circTreeCount * 2;
     const radialTotal = radialTreesPerSide * 2 * ROAD.radialCount;
-    const totalTrees = circularTotal + radialTotal;
 
-    // Trunk geometry & material
+    // Shared trunk geometry & material
     const trunkGeo = new THREE.CylinderGeometry(
       FURNITURE.treeTrunkR,             // 0.2
       FURNITURE.treeTrunkR * 1.3,       // 0.26
@@ -61,15 +58,21 @@ export class RoadFurniture {
       6,
     );
     const trunkMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.treeTrunk });
-    const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, totalTrees);
-    trunkMesh.castShadow = true;
-
-    // Canopy geometry & material — single shared geometry (treeCanopyR = 4)
-    // Radial trees use smallTreeCanopyR (3) for placement height only
-    const canopyGeo = new THREE.IcosahedronGeometry(FURNITURE.treeCanopyR, 1); // r=4
     const canopyMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.treeCanopy });
-    const canopyMesh = new THREE.InstancedMesh(canopyGeo, canopyMat, totalTrees);
-    canopyMesh.castShadow = true;
+
+    // Circular trees: canopy r=4
+    const circTrunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, circularTotal);
+    circTrunkMesh.castShadow = true;
+    const circCanopyGeo = new THREE.IcosahedronGeometry(FURNITURE.treeCanopyR, 1); // r=4
+    const circCanopyMesh = new THREE.InstancedMesh(circCanopyGeo, canopyMat, circularTotal);
+    circCanopyMesh.castShadow = true;
+
+    // Radial trees: canopy r=3
+    const radialTrunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, radialTotal);
+    radialTrunkMesh.castShadow = true;
+    const radialCanopyGeo = new THREE.IcosahedronGeometry(FURNITURE.smallTreeCanopyR, 1); // r=3
+    const radialCanopyMesh = new THREE.InstancedMesh(radialCanopyGeo, canopyMat, radialTotal);
+    radialCanopyMesh.castShadow = true;
 
     const trunkHalfH = FURNITURE.treeTrunkH / 2;                               // 2
     const canopyY = FURNITURE.treeTrunkH + FURNITURE.treeCanopyR;               // 8
@@ -80,7 +83,8 @@ export class RoadFurniture {
     const _s = new THREE.Vector3(1, 1, 1);
     const _p = new THREE.Vector3();
 
-    let idx = 0;
+    let circIdx = 0;
+    let radialIdx = 0;
 
     // ── Circular road trees ──────────────────────────────────────────────────
     for (let i = 0; i < circTreeCount; i++) {
@@ -94,13 +98,13 @@ export class RoadFurniture {
 
         _p.set(x, trunkHalfH, z);
         this._mat.compose(_p, _q, _s);
-        trunkMesh.setMatrixAt(idx, this._mat);
+        circTrunkMesh.setMatrixAt(circIdx, this._mat);
 
         _p.set(x, canopyY, z);
         this._mat.compose(_p, _q, _s);
-        canopyMesh.setMatrixAt(idx, this._mat);
+        circCanopyMesh.setMatrixAt(circIdx, this._mat);
 
-        idx++;
+        circIdx++;
       }
     }
 
@@ -124,23 +128,26 @@ export class RoadFurniture {
 
           _p.set(x, trunkHalfH, z);
           this._mat.compose(_p, _q, _s);
-          trunkMesh.setMatrixAt(idx, this._mat);
+          radialTrunkMesh.setMatrixAt(radialIdx, this._mat);
 
-          // Use smallTreeCanopyR for placement height on radial trees
           _p.set(x, smallCanopyY, z);
           this._mat.compose(_p, _q, _s);
-          canopyMesh.setMatrixAt(idx, this._mat);
+          radialCanopyMesh.setMatrixAt(radialIdx, this._mat);
 
-          idx++;
+          radialIdx++;
         }
       }
     }
 
-    trunkMesh.instanceMatrix.needsUpdate = true;
-    canopyMesh.instanceMatrix.needsUpdate = true;
+    circTrunkMesh.instanceMatrix.needsUpdate = true;
+    circCanopyMesh.instanceMatrix.needsUpdate = true;
+    radialTrunkMesh.instanceMatrix.needsUpdate = true;
+    radialCanopyMesh.instanceMatrix.needsUpdate = true;
 
-    this.group.add(trunkMesh);
-    this.group.add(canopyMesh);
+    this.group.add(circTrunkMesh);
+    this.group.add(circCanopyMesh);
+    this.group.add(radialTrunkMesh);
+    this.group.add(radialCanopyMesh);
   }
 
   // ─── 2. Street Lights ───────────────────────────────────────────────────────

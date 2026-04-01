@@ -131,7 +131,7 @@ function init() {
     const weatherState = weatherSystem.update(dt);
     matUpdater.update(timeState, weatherState, dt);
 
-    const nightFactor = 1 - Math.min(1, Math.max(0, timeState.sunIntensity / 0.25));
+    const nightFactor = 1 - Math.min(1, Math.max(0, timeState.sunIntensity / 0.8));
     const celestialResult = celestialSystem.update(nightFactor, timeState.hour, elapsed, dt, weatherState.overcast);
 
     // Cinematic lighting

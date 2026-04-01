@@ -13,28 +13,45 @@ export class RadialRoads {
     const midR = (ROAD.radialInnerR + ROAD.radialOuterR) / 2; // 1000m
 
     const asphaltMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.asphalt });
+    const bikeLaneMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.bikeLane });
     const sidewalkMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.sidewalk });
     const centerLineMat = new THREE.MeshStandardMaterial({ color: ROAD_COLORS.centerLine });
 
-    // Sidewalk strip half-width offset from road center: half vehicle lanes + half sidewalk strip
-    // Vehicle lanes span ±(radialLaneWidth) = ±3.5m from center (2 lanes × 3.5m = 7m total)
-    // Sidewalk strip width = 3.5m, centered at ±(3.5 + 1.75) = ±5.25m from road center
-    const sidewalkOffset = ROAD.radialLaneWidth + ROAD.radialLaneWidth / 2; // 3.5 + 1.75 = 5.25m
+    // Shared geometry instances — created once, reused across all 8 roads
+    const roadGeo = new THREE.PlaneGeometry(ROAD.radialWidth, roadLength);
+    const bikeLaneGeo = new THREE.PlaneGeometry(ROAD.bikeLaneWidth, roadLength);
+    const sidewalkGeo = new THREE.PlaneGeometry(1.5, roadLength);
+    const centerLineGeo = new THREE.PlaneGeometry(FURNITURE.centerLineWidth, roadLength);
+
+    // Bike lane offset: ±(radialLaneWidth + bikeLaneWidth/2) from road center
+    const bikeLaneOffset = ROAD.radialLaneWidth + ROAD.bikeLaneWidth / 2; // 3.5 + 1.0 = 4.5m
+    // Sidewalk offset: ±(radialLaneWidth + bikeLaneWidth + 0.75) from road center
+    const sidewalkOffset = ROAD.radialLaneWidth + ROAD.bikeLaneWidth + 0.75; // 3.5 + 2.0 + 0.75 = 6.25m
 
     for (let i = 0; i < ROAD.radialCount; i++) {
       const angle = (i * 2 * Math.PI) / ROAD.radialCount;
       const roadGroup = new THREE.Group();
 
       // --- Main road surface ---
-      const roadGeo = new THREE.PlaneGeometry(ROAD.radialWidth, roadLength);
       const roadMesh = new THREE.Mesh(roadGeo, asphaltMat);
       roadMesh.rotation.x = -Math.PI / 2;
       roadMesh.receiveShadow = true;
       roadGroup.add(roadMesh);
 
-      // --- Sidewalk overlay strips (left and right) ---
-      const sidewalkGeo = new THREE.PlaneGeometry(ROAD.radialLaneWidth, roadLength);
+      // --- Bike lane strips (left and right, inner 2m, between vehicle lanes and sidewalk) ---
+      const leftBikeLane = new THREE.Mesh(bikeLaneGeo, bikeLaneMat);
+      leftBikeLane.rotation.x = -Math.PI / 2;
+      leftBikeLane.position.set(-bikeLaneOffset, ROAD.bikeElevation, 0);
+      leftBikeLane.receiveShadow = true;
+      roadGroup.add(leftBikeLane);
 
+      const rightBikeLane = new THREE.Mesh(bikeLaneGeo, bikeLaneMat);
+      rightBikeLane.rotation.x = -Math.PI / 2;
+      rightBikeLane.position.set(bikeLaneOffset, ROAD.bikeElevation, 0);
+      rightBikeLane.receiveShadow = true;
+      roadGroup.add(rightBikeLane);
+
+      // --- Sidewalk strips (left and right, outer 1.5m, at road edge) ---
       const leftSidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
       leftSidewalk.rotation.x = -Math.PI / 2;
       leftSidewalk.position.set(-sidewalkOffset, ROAD.sidewalkElevation, 0);
@@ -48,7 +65,6 @@ export class RadialRoads {
       roadGroup.add(rightSidewalk);
 
       // --- Center line ---
-      const centerLineGeo = new THREE.PlaneGeometry(FURNITURE.centerLineWidth, roadLength);
       const centerLine = new THREE.Mesh(centerLineGeo, centerLineMat);
       centerLine.rotation.x = -Math.PI / 2;
       centerLine.position.set(0, MARKING_ELEVATION, 0);
