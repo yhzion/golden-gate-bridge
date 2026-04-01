@@ -1,14 +1,11 @@
 import * as THREE from 'three';
 import { BaseBridgePart } from '@/landmarks/bridge/BridgePart';
 import type { BridgeMaterials } from '@/world/Materials';
-import { BRIDGE } from '@/config/bridge';
+import { BRIDGE, DECK } from '@/config/bridge';
 
 /**
- * D6 — DrainageUtilities
- * Scuppers, drain pipes, and utility conduits under the deck.
- * - Scuppers: InstancedMesh BoxGeometry every 15m on both sides
- * - Drain pipes: InstancedMesh CylinderGeometry below each scupper
- * - Conduits: 3 CylinderGeometry runs under deck at x = [-5, 0, 5]
+ * D6 — Drainage & Utilities
+ * Scuppers in deck curb at regular intervals + utility conduit runs under deck.
  */
 export class DrainageUtilities extends BaseBridgePart {
   constructor() {
@@ -16,68 +13,67 @@ export class DrainageUtilities extends BaseBridgePart {
   }
 
   buildGeometry(): void {
-    const { mainSpan, sideSpan, deckH, deckW } = BRIDGE;
+    const startZ = -BRIDGE.sideSpan;
+    const endZ = BRIDGE.mainSpan + BRIDGE.sideSpan;
+    const totalLen = endZ - startZ;
+    const halfW = BRIDGE.deckW / 2;
 
-    const zStart = -sideSpan;
-    const zEnd = mainSpan + sideSpan;
-    const totalLen = zEnd - zStart;
-
+    // Scuppers — small rectangular openings in deck curb every 15m
     const scupperSpacing = 15;
-    const scupperCount = Math.floor(totalLen / scupperSpacing);
-
-    // Scupper x positions — just inside each curb
-    const scupperXs = [-(deckW / 2 - 0.3), (deckW / 2 - 0.3)];
-
+    const scuppersPerSide = Math.floor(totalLen / scupperSpacing);
+    const scupperCount = scuppersPerSide * 2;
     const scupperGeo = new THREE.BoxGeometry(0.15, 0.1, 0.3);
-    const drainPipeGeo = new THREE.CylinderGeometry(0.04, 0.04, 2, 6);
+    const scupperMesh = new THREE.InstancedMesh(scupperGeo, undefined!, scupperCount);
 
-    for (const sx of scupperXs) {
-      // Scuppers
-      const scupperMesh = new THREE.InstancedMesh(scupperGeo, undefined, scupperCount);
-      scupperMesh.castShadow = false;
-      scupperMesh.receiveShadow = false;
-
-      // Drain pipes
-      const drainMesh = new THREE.InstancedMesh(drainPipeGeo, undefined, scupperCount);
-      drainMesh.castShadow = false;
-      drainMesh.receiveShadow = false;
-
-      const dummy = new THREE.Object3D();
-      for (let i = 0; i < scupperCount; i++) {
-        const z = zStart + i * scupperSpacing + scupperSpacing / 2;
-
-        // Scupper flush with deck underside
-        dummy.position.set(sx, deckH - 0.05, z);
-        dummy.rotation.set(0, 0, 0);
-        dummy.updateMatrix();
-        scupperMesh.setMatrixAt(i, dummy.matrix);
-
-        // Drain pipe hanging below scupper
-        dummy.position.set(sx, deckH - 1.1, z);
-        dummy.rotation.set(0, 0, 0);
-        dummy.updateMatrix();
-        drainMesh.setMatrixAt(i, dummy.matrix);
+    const mat = new THREE.Matrix4();
+    let idx = 0;
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < scuppersPerSide; i++) {
+        const z = startZ + i * scupperSpacing;
+        mat.identity();
+        mat.setPosition(
+          side * (halfW - 2.0),
+          BRIDGE.deckH - 0.05,
+          z,
+        );
+        scupperMesh.setMatrixAt(idx++, mat);
       }
-
-      scupperMesh.instanceMatrix.needsUpdate = true;
-      drainMesh.instanceMatrix.needsUpdate = true;
-
-      this.group.add(scupperMesh);
-      this.group.add(drainMesh);
     }
+    scupperMesh.instanceMatrix.needsUpdate = true;
+    this.group.add(scupperMesh);
 
-    // --- Utility conduits (continuous runs under deck) ---
+    // Drain pipes (vertical tubes under deck at scupper locations)
+    const pipeGeo = new THREE.CylinderGeometry(0.04, 0.04, 2, 6);
+    const pipeMesh = new THREE.InstancedMesh(pipeGeo, undefined!, scupperCount);
+
+    idx = 0;
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < scuppersPerSide; i++) {
+        const z = startZ + i * scupperSpacing;
+        mat.identity();
+        mat.setPosition(
+          side * (halfW - 2.0),
+          BRIDGE.deckH - DECK.trussH / 2,
+          z,
+        );
+        pipeMesh.setMatrixAt(idx++, mat);
+      }
+    }
+    pipeMesh.instanceMatrix.needsUpdate = true;
+    this.group.add(pipeMesh);
+
+    // Utility conduits — 3 longitudinal runs under the deck
+    const conduitGeo = new THREE.CylinderGeometry(0.08, 0.08, totalLen, 6);
+    conduitGeo.rotateX(Math.PI / 2);
     const conduitXs = [-5, 0, 5];
-    const conduitGeo = new THREE.CylinderGeometry(0.05, 0.05, totalLen, 6);
-
     for (const cx of conduitXs) {
-      const conduitMesh = new THREE.Mesh(conduitGeo);
-      // Rotate so it runs along Z axis
-      conduitMesh.rotation.set(Math.PI / 2, 0, 0);
-      conduitMesh.position.set(cx, deckH - 0.8, zStart + totalLen / 2);
-      conduitMesh.castShadow = false;
-      conduitMesh.receiveShadow = false;
-      this.group.add(conduitMesh);
+      const conduit = new THREE.Mesh(conduitGeo);
+      conduit.position.set(
+        cx,
+        BRIDGE.deckH - DECK.trussH + 0.5,
+        startZ + totalLen / 2,
+      );
+      this.group.add(conduit);
     }
   }
 

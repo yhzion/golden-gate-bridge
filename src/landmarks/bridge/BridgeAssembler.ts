@@ -52,7 +52,7 @@ export class BridgeAssembler extends BaseLandmark {
   }
 
   build(): void {
-    // Register all 13 parts (8 towers + 5 cables)
+    // Towers (T1–T8) + Cables (C1–C5)
     this.registerPart(new TowerShaft());
     this.registerPart(new TowerPortals());
     this.registerPart(new TowerCells());

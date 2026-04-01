@@ -4,10 +4,9 @@ import type { BridgeMaterials } from '@/world/Materials';
 import { BRIDGE } from '@/config/bridge';
 
 /**
- * D7 — ExpansionJoints
- * Finger joints at tower locations (z=0 and z=mainSpan).
- * - Interleaved finger plates: individual BoxGeometry meshes, 20 per joint side
- * - Support beam under each joint
+ * D7 — Expansion Joints
+ * Finger joints at each tower location allowing thermal movement.
+ * Steel fingers interlock from both sides of the gap.
  */
 export class ExpansionJoints extends BaseBridgePart {
   constructor() {
@@ -15,42 +14,40 @@ export class ExpansionJoints extends BaseBridgePart {
   }
 
   buildGeometry(): void {
-    const { mainSpan, deckH, deckW } = BRIDGE;
+    const towerZs = [0, BRIDGE.mainSpan];
+    const roadW = BRIDGE.deckW - 4;
+    const fingerCount = 20;
+    const fingerW = roadW / fingerCount;
+    const fingerLen = 0.6;
+    const fingerH = 0.05;
+    const gap = 0.08;
 
-    const roadW = deckW - 4;
-    const jointZs = [0, mainSpan];
+    const fingerGeo = new THREE.BoxGeometry(fingerW * 0.4, fingerH, fingerLen);
 
-    // Finger plate dimensions
-    const fingerW = roadW / 20; // divide road width into 20 fingers
-    const fingerThick = 0.04;
-    const fingerLen = 0.6; // protrusion length per side
-    const fingerH = 0.15;
-    const gapBetween = 0.02;
+    for (const towerZ of towerZs) {
+      for (let i = 0; i < fingerCount; i++) {
+        const x = -roadW / 2 + (i + 0.5) * fingerW;
 
-    for (const jz of jointZs) {
-      // --- Finger plates: 20 on each side (near and far), interleaved ---
-      for (let side = -1; side <= 1; side += 2) {
-        for (let i = 0; i < 20; i++) {
-          // Alternate fingers offset so they interleave
-          const xOffset = (i - 9.5) * (fingerW + gapBetween);
-          const zOffset = side === -1 ? -fingerLen / 2 : fingerLen / 2;
+        // South side finger
+        const south = new THREE.Mesh(fingerGeo);
+        south.position.set(x, BRIDGE.deckH + 0.01, towerZ - gap / 2 - fingerLen / 2);
+        this.group.add(south);
 
-          const fingerGeo = new THREE.BoxGeometry(fingerW - gapBetween, fingerH, fingerLen);
-          const fingerMesh = new THREE.Mesh(fingerGeo);
-          fingerMesh.position.set(xOffset, deckH - fingerH / 2, jz + zOffset);
-          fingerMesh.castShadow = true;
-          fingerMesh.receiveShadow = true;
-          this.group.add(fingerMesh);
-        }
+        // Interleaved north side finger
+        const north = new THREE.Mesh(fingerGeo);
+        north.position.set(
+          x + fingerW * 0.5,
+          BRIDGE.deckH + 0.01,
+          towerZ + gap / 2 + fingerLen / 2,
+        );
+        this.group.add(north);
       }
 
-      // --- Support beam under each joint ---
+      // Support beam under joint
       const supportGeo = new THREE.BoxGeometry(roadW, 0.3, 1.5);
-      const supportMesh = new THREE.Mesh(supportGeo);
-      supportMesh.position.set(0, deckH - fingerH - 0.15, jz);
-      supportMesh.castShadow = true;
-      supportMesh.receiveShadow = true;
-      this.group.add(supportMesh);
+      const support = new THREE.Mesh(supportGeo);
+      support.position.set(0, BRIDGE.deckH - 0.2, towerZ);
+      this.group.add(support);
     }
   }
 

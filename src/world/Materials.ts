@@ -4,6 +4,7 @@ import { generateSteelTextures } from '@/world/textures/SteelPBR';
 import { generateConcreteTextures } from '@/world/textures/ConcretePBR';
 import { generateCableTextures } from '@/world/textures/CablePBR';
 import { generateWeatheringOverlay } from '@/world/textures/WeatheringLayer';
+import { generateAsphaltTextures } from '@/world/textures/AsphaltPBR';
 
 export interface BridgeMaterials {
   // Steel variants
@@ -124,18 +125,24 @@ export function createMaterials(): BridgeMaterials {
     metalness: 0,
   });
 
+  const asphaltTex = generateAsphaltTextures(1024);
+  asphaltTex.colorMap.repeat.set(12, 60);
+  asphaltTex.normalMap.repeat.set(12, 60);
+  asphaltTex.roughnessMap.repeat.set(12, 60);
+
   const asphalt = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,
-    roughness: 0.92,
+    map: asphaltTex.colorMap,
+    normalMap: asphaltTex.normalMap,
+    normalScale: new THREE.Vector2(0.6, 0.6),
+    roughnessMap: asphaltTex.roughnessMap,
+    roughness: 0.9,
     metalness: 0,
-    normalMap: steelTex.normalMap,
-    normalScale: new THREE.Vector2(0.2, 0.2),
   });
 
   const laneMarkings = new THREE.MeshStandardMaterial({
     color: 0xdddddd,
-    roughness: 0.6,
-    metalness: 0.05,
+    roughness: 0.55,
+    metalness: 0.02,
   });
 
   const galvanizedSteel = new THREE.MeshStandardMaterial({
