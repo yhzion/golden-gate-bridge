@@ -1,11 +1,9 @@
 import * as THREE from 'three';
-import { QualityTier, type Tier, type TierMode } from './QualityTier';
+import { QualityTier, type Tier } from './QualityTier';
 import { StructuralLights } from './StructuralLights';
 import { RoadLights } from './RoadLights';
 import { SafetyLights } from './SafetyLights';
 import type { TimeState } from '@/atmosphere/TimeOfDay';
-import type { WeatherState } from '@/atmosphere/WeatherSystem';
-
 export class LightingManager {
   readonly qualityTier: QualityTier;
   private structural: StructuralLights;
@@ -19,13 +17,9 @@ export class LightingManager {
     this.structural = new StructuralLights(scene);
     this.road = new RoadLights(scene);
     this.safety = new SafetyLights(scene);
-
-    this.qualityTier.onTierChange((tier) => {
-      this.applyTier(tier);
-    });
   }
 
-  update(dt: number, elapsed: number, timeState: TimeState, weatherState: WeatherState): void {
+  update(dt: number, elapsed: number, timeState: TimeState): void {
     this.qualityTier.sample(dt);
     const tier = this.qualityTier.getCurrentTier();
     const camPos = this.camera.position;
@@ -36,10 +30,6 @@ export class LightingManager {
 
     const maxShadows = tier === 'high' ? 2 : 0;
     this.structural.updateShadowBudget(camPos, maxShadows);
-  }
-
-  private applyTier(tier: Tier): void {
-    // Tier changes are handled per-frame in each subsystem's update
   }
 
   getLightPositions(): THREE.Vector3[] {

@@ -44,8 +44,8 @@ export class PostFXPipeline {
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.Camera;
   private lightingManager: LightingManager | null;
-  private depthRenderTarget: THREE.WebGLRenderTarget;
   private renderPass: RenderPass;
+  private depthRenderTarget: THREE.WebGLRenderTarget;
 
   // Scratch objects to avoid per-frame allocations
   private _sunDir = new THREE.Vector3();
@@ -69,6 +69,7 @@ export class PostFXPipeline {
     this.camera = camera;
     this.lightingManager = lightingManager;
 
+    // Separate depth target for volumetric fog (only rendered when fog is active)
     const depthTex = new THREE.DepthTexture(innerWidth, innerHeight);
     depthTex.format = THREE.DepthFormat;
     depthTex.type = THREE.UnsignedIntType;
@@ -78,6 +79,7 @@ export class PostFXPipeline {
     });
 
     this.composer = new EffectComposer(renderer);
+
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
 
@@ -206,5 +208,13 @@ export class PostFXPipeline {
     const h = innerHeight;
     this.composer.setSize(w, h);
     this.depthRenderTarget.setSize(w, h);
+  }
+
+  dispose(): void {
+    this.depthRenderTarget.depthTexture?.dispose();
+    this.depthRenderTarget.dispose();
+    this.volumetricFog.dispose();
+    this.godRays.dispose();
+    this.lensFlare.dispose();
   }
 }

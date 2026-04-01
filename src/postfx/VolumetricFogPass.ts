@@ -19,6 +19,7 @@ const VolumetricFogShader = {
     fogDensity: { value: 0.0003 },
     fogColor: { value: new THREE.Vector3(0.5, 0.5, 0.6) },
     anisotropy: { value: 0.7 },
+    resolution: { value: new THREE.Vector2(1920, 1080) },
     time: { value: 0 },
   },
   vertexShader: /* glsl */ `
@@ -43,6 +44,7 @@ const VolumetricFogShader = {
     uniform float fogDensity;
     uniform vec3 fogColor;
     uniform float anisotropy;
+    uniform vec2 resolution;
     uniform float time;
 
     varying vec2 vUv;
@@ -81,7 +83,7 @@ const VolumetricFogShader = {
       vec3 rayDir = normalize(worldPos - camPos);
       float totalDist = length(worldPos - camPos);
 
-      float dither = hash(vUv * vec2(1920.0, 1080.0) + time * 100.0);
+      float dither = hash(vUv * resolution + time * 100.0);
 
       const int STEPS = 16;
       float stepSize = totalDist / float(STEPS);
@@ -176,6 +178,7 @@ export class VolumetricFogPass extends Pass {
     (u['inverseProjection'].value as THREE.Matrix4).copy(this.camera.projectionMatrixInverse);
     (u['inverseView'].value as THREE.Matrix4).copy(this.camera.matrixWorld);
     u['time'].value = performance.now() * 0.001;
+    (u['resolution'].value as THREE.Vector2).set(readBuffer.width, readBuffer.height);
 
     if (this.renderToScreen) {
       renderer.setRenderTarget(null);

@@ -131,7 +131,7 @@ function init() {
     const celestialResult = celestialSystem.update(nightFactor, timeState.hour, elapsed, dt, weatherState.overcast);
 
     // Cinematic lighting
-    lightingManager.update(dt, elapsed, timeState, weatherState);
+    lightingManager.update(dt, elapsed, timeState);
     postfx.updateLighting(timeState, weatherState);
 
     // Bridge updatable parts
