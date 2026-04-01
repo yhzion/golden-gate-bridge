@@ -45,6 +45,7 @@ export class PostFXPipeline {
   private camera: THREE.Camera;
   private lightingManager: LightingManager | null;
   private depthRenderTarget: THREE.WebGLRenderTarget;
+  private renderPass: RenderPass;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -65,7 +66,8 @@ export class PostFXPipeline {
     });
 
     this.composer = new EffectComposer(renderer);
-    this.composer.addPass(new RenderPass(scene, camera));
+    this.renderPass = new RenderPass(scene, camera);
+    this.composer.addPass(this.renderPass);
 
     this.volumetricFog = new VolumetricFogPass(renderer, camera);
     this.volumetricFog.setDepthTexture(depthTex);
@@ -179,7 +181,7 @@ export class PostFXPipeline {
     if (this.volumetricFog.enabled) {
       const currentRT = this.renderer.getRenderTarget();
       this.renderer.setRenderTarget(this.depthRenderTarget);
-      this.renderer.render((this.composer.passes[0] as any).scene, this.camera);
+      this.renderer.render(this.renderPass.scene, this.camera);
       this.renderer.setRenderTarget(currentRT);
     }
     this.composer.render();

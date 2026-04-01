@@ -70,6 +70,13 @@ function init() {
   const input = new InputManager(sm.renderer.domElement);
   const flight = new FlightCamera(sm.camera, input.ctrl);
 
+  // UI
+  const hud = new HUD();
+  prog.style.width = '90%';
+
+  const postfx = new PostFXPipeline(sm.renderer, sm.scene, sm.camera, lightingManager);
+  window.addEventListener('resize', () => postfx.resize());
+
   input.setCallbacks(
     (n) => {
       flight.autoFly = false;
@@ -110,12 +117,6 @@ function init() {
       sm.renderer.domElement.requestPointerLock();
     });
   }
-
-  const hud = new HUD();
-  prog.style.width = '90%';
-
-  const postfx = new PostFXPipeline(sm.renderer, sm.scene, sm.camera, lightingManager);
-  window.addEventListener('resize', () => postfx.resize());
 
   const loop = new GameLoop();
 
