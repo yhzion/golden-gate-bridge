@@ -7,7 +7,6 @@ import type { SceneManager } from '@/engine/SceneManager';
 
 interface CachedMaterial {
   mat: THREE.MeshStandardMaterial;
-  baseEnvMapIntensity: number;
   baseEmissiveIntensity: number;
   isLight: boolean;
   isAviation: boolean;
@@ -19,22 +18,33 @@ export class MaterialUpdater {
   private water: Water;
   private sky: Sky;
   private sunLight: THREE.DirectionalLight;
+  private hemisphereLight: THREE.HemisphereLight;
   private ambientLight: THREE.AmbientLight | null = null;
   private cached: CachedMaterial[] = [];
   private cacheBuilt = false;
-  private envUpdateTimer = 0;
+  private _sunDir = new THREE.Vector3();
+  private _waterColor = new THREE.Color();
+  private _lastSunElevation = -999;
+  private _lastSunAzimuth = -999;
+  private _waterColorBase = new THREE.Color(0x0a3050);
+  private _waterColorTarget = new THREE.Color(0x1a4a6a);
 
   constructor(
     sm: SceneManager,
     water: Water,
     sky: Sky,
     sunLight: THREE.DirectionalLight,
+    hemisphereLight: THREE.HemisphereLight,
   ) {
     this.sm = sm;
     this.scene = sm.scene;
     this.water = water;
     this.sky = sky;
     this.sunLight = sunLight;
+    this.hemisphereLight = hemisphereLight;
+
+    // Disable HDR environment map — use direct lighting only
+    this.scene.environment = null;
 
     sm.scene.traverse((obj) => {
       if (obj instanceof THREE.AmbientLight) {
@@ -61,7 +71,6 @@ export class MaterialUpdater {
 
       this.cached.push({
         mat,
-        baseEnvMapIntensity: mat.envMapIntensity ?? 1,
         baseEmissiveIntensity: mat.emissiveIntensity,
         isLight,
         isAviation,
@@ -72,76 +81,66 @@ export class MaterialUpdater {
   update(time: TimeState, weather: WeatherState, dt: number) {
     this.buildCache();
 
-    // Sun position
+    // Sun position (reuse scratch vector)
     const phi = THREE.MathUtils.degToRad(90 - time.sunElevation);
     const theta = THREE.MathUtils.degToRad(time.sunAzimuth);
-    const sunDir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+    const sunDir = this._sunDir.setFromSphericalCoords(1, phi, theta);
 
-    // Sky uniforms
+    // Only re-render shadow map when sun position changes meaningfully
+    const elevDelta = Math.abs(time.sunElevation - this._lastSunElevation);
+    const azDelta = Math.abs(time.sunAzimuth - this._lastSunAzimuth);
+    if (elevDelta > 0.5 || azDelta > 0.5) {
+      this._lastSunElevation = time.sunElevation;
+      this._lastSunAzimuth = time.sunAzimuth;
+      this.sm.renderer.shadowMap.needsUpdate = true;
+    }
+
+    // Sky uniforms (visual sky dome only, not used for lighting)
     const skyU = this.sky.material.uniforms;
     skyU['sunPosition'].value.copy(sunDir);
     skyU['turbidity'].value = time.turbidity;
     skyU['rayleigh'].value = time.rayleigh;
-
-    // Regenerate environment map every ~2 seconds so reflections match current sky
-    this.envUpdateTimer += dt;
-    if (this.envUpdateTimer > 2.0) {
-      this.envUpdateTimer = 0;
-      if (this.sm.envTarget) this.sm.envTarget.dispose();
-      this.sm.sceneEnv.add(this.sky);
-      this.sm.envTarget = this.sm.pmremGen.fromScene(this.sm.sceneEnv);
-      this.scene.add(this.sky);
-      this.scene.environment = this.sm.envTarget.texture;
-    }
 
     // Sun light
     this.sunLight.color.copy(time.sunColor);
     this.sunLight.intensity = time.sunIntensity;
     this.sunLight.position.copy(sunDir).multiplyScalar(600);
 
-    // Ambient
+    // Ambient — ensure minimum city-level ambient even at full night
     if (this.ambientLight) {
-      this.ambientLight.intensity = time.ambientIntensity;
+      this.ambientLight.intensity = Math.max(time.ambientIntensity, 0.25);
     }
 
-    // Water
-    this.water.material.uniforms['sunDirection'].value.copy(sunDir).normalize();
-
-    // Fog
-    const fogDensity = time.fogDensity * weather.fogMultiplier;
-    if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.density = fogDensity;
-      this.scene.fog.color.copy(time.fogColor);
-    }
+    // Hemisphere
+    this.hemisphereLight.intensity = time.hemisphereIntensity;
 
     // Exposure
     this.sm.renderer.toneMappingExposure = time.exposure;
 
     // Night factor: 0 = full day, 1 = full night
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.8, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 1.0, 0, 1);
+
+    // Water — boost reflectivity at night for visible waves
+    this.water.material.uniforms['sunDirection'].value.copy(sunDir).normalize();
+    const waterDistortion = THREE.MathUtils.lerp(4.5, 6.0, nightFactor);
+    this.water.material.uniforms['distortionScale'].value = waterDistortion;
+    this._waterColor.copy(this._waterColorBase).lerp(this._waterColorTarget, nightFactor * 0.5);
+    this.water.material.uniforms['waterColor'].value.copy(this._waterColor);
+
+    // Hide Sky dome at night — celestial system provides the night sky
+    this.sky.visible = nightFactor < 0.5;
 
     // Update cached materials
     for (const entry of this.cached) {
-      // Reduce env map reflection at night
-      entry.mat.envMapIntensity = entry.baseEnvMapIntensity * (1 - nightFactor * 0.85);
-
       if (entry.isLight) {
-        // Street lanterns: amber glow at night (like real GGB HPS 250W amber lamps)
-        entry.mat.emissiveIntensity = THREE.MathUtils.lerp(
-          entry.baseEmissiveIntensity * 0.1,
-          entry.baseEmissiveIntensity * 2.5,
-          nightFactor,
-        );
+        // Off during day, boosted intensity at night
+        entry.mat.emissiveIntensity = nightFactor * Math.min(entry.baseEmissiveIntensity * 2.0, 2.0);
       }
 
-      if (entry.isAviation) {
-        // Aviation red beacons: brighter at night
-        entry.mat.emissiveIntensity = THREE.MathUtils.lerp(
-          entry.baseEmissiveIntensity * 0.5,
-          entry.baseEmissiveIntensity * 3.0,
-          nightFactor,
-        );
-      }
+      // Allow some envMap contribution at night for ambient visibility
+      entry.mat.envMapIntensity = time.envMapIntensity;
+
+      // Aviation beacons are now controlled by SafetyLights strobe system
     }
   }
 }

@@ -39,7 +39,7 @@ function generateWaterNormals(size = 512): THREE.CanvasTexture {
 
 export function createWater(scene: THREE.Scene): Water {
   const normals = generateWaterNormals(512);
-  const geo = new THREE.PlaneGeometry(30000, 30000);
+  const geo = new THREE.PlaneGeometry(200000, 200000);
   const water = new Water(geo, {
     textureWidth: 512,
     textureHeight: 512,
@@ -48,7 +48,6 @@ export function createWater(scene: THREE.Scene): Water {
     sunColor: 0xfff5e0,
     waterColor: 0x0a3050,
     distortionScale: 4.5,
-    fog: true,
     alpha: 0.85,
   });
   water.rotation.x = -Math.PI / 2;

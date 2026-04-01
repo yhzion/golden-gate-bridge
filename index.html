@@ -26,7 +26,40 @@
   #hud{position:fixed;bottom:20px;left:20px;z-index:40;font-size:0.75rem;color:rgba(255,255,255,0.6);pointer-events:none;transition:opacity 0.5s}
   #hud div{margin-bottom:4px}
   #hud .val{color:#c04530;font-weight:600;font-size:0.85rem}
-  #viewpoint-label{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.4rem;font-weight:200;letter-spacing:0.4em;color:rgba(255,255,255,0.8);pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:40;text-shadow:0 2px 20px rgba(0,0,0,0.5)}
+  /* ── GTA5-style cinematic title system ── */
+  #viewpoint-label{position:fixed;pointer-events:none;opacity:0;z-index:40;transition:opacity 0.6s ease-out}
+  #viewpoint-label .title-main{font-size:2.2rem;font-weight:700;letter-spacing:0.25em;color:#fff;text-shadow:0 2px 30px rgba(0,0,0,0.7),0 0 60px rgba(0,0,0,0.3);text-transform:uppercase;line-height:1.2}
+  #viewpoint-label .title-sub{font-size:0.8rem;font-weight:300;letter-spacing:0.35em;color:rgba(255,255,255,0.6);margin-top:6px;text-shadow:0 1px 10px rgba(0,0,0,0.5);text-transform:uppercase}
+  #viewpoint-label .title-line{width:0;height:2px;background:linear-gradient(90deg,#c04530,rgba(192,69,48,0));margin-top:8px;transition:width 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s}
+  #viewpoint-label.visible .title-line{width:80px}
+
+  /* Positions */
+  #viewpoint-label.pos-bottom-left{bottom:100px;left:60px}
+  #viewpoint-label.pos-bottom-right{bottom:100px;right:60px;text-align:right}
+  #viewpoint-label.pos-bottom-right .title-line{margin-left:auto}
+  #viewpoint-label.pos-center{top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+  #viewpoint-label.pos-center .title-main{font-size:3rem;font-weight:200;letter-spacing:0.5em}
+  #viewpoint-label.pos-center .title-sub{letter-spacing:0.5em}
+  #viewpoint-label.pos-center .title-line{margin:10px auto 0}
+  #viewpoint-label.pos-top-left{top:100px;left:60px}
+  #viewpoint-label.pos-top-right{top:100px;right:60px;text-align:right}
+  #viewpoint-label.pos-top-right .title-line{margin-left:auto}
+
+  /* Animations */
+  @keyframes title-slide-up{from{transform:translateY(25px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes title-slide-left{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes title-slide-right{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes title-fade{from{opacity:0}to{opacity:1}}
+  #viewpoint-label.visible .title-main{animation-duration:0.7s;animation-timing-function:cubic-bezier(0.22,1,0.36,1);animation-fill-mode:both}
+  #viewpoint-label.visible .title-sub{animation-duration:0.7s;animation-timing-function:cubic-bezier(0.22,1,0.36,1);animation-fill-mode:both;animation-delay:0.15s}
+  #viewpoint-label.anim-slide-up.visible .title-main,#viewpoint-label.anim-slide-up.visible .title-sub{animation-name:title-slide-up}
+  #viewpoint-label.anim-slide-left.visible .title-main,#viewpoint-label.anim-slide-left.visible .title-sub{animation-name:title-slide-left}
+  #viewpoint-label.anim-slide-right.visible .title-main,#viewpoint-label.anim-slide-right.visible .title-sub{animation-name:title-slide-right}
+  #viewpoint-label.anim-fade.visible .title-main,#viewpoint-label.anim-fade.visible .title-sub{animation-name:title-fade}
+  /* Clock overlay */
+  #clock-overlay{position:fixed;top:24px;right:24px;z-index:45;pointer-events:none;text-align:right;padding:12px 16px;border-radius:12px;background:rgba(0,0,0,0.35);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}
+  .clock-time{font-size:1.6rem;font-weight:300;letter-spacing:0.15em;color:rgba(255,255,255,0.92);text-shadow:0 1px 4px rgba(0,0,0,0.8);font-variant-numeric:tabular-nums}
+  .clock-date{font-size:0.65rem;color:rgba(255,255,255,0.55);letter-spacing:0.12em;margin-top:3px;text-shadow:0 1px 3px rgba(0,0,0,0.6)}
 </style>
 </head>
 <body>
@@ -45,7 +78,6 @@
     <span>Space / Q</span><span>Up / Down</span>
     <span>Shift</span><span>Boost (3x)</span>
     <span>Scroll</span><span>Adjust speed</span>
-    <span>1 - 6</span><span>Viewpoints</span>
     <span>7 / 8 / 9</span><span>Clear / Fog / Rain</span>
     <span>F</span><span>Pause/Play time</span>
     <span>ESC</span><span>Exit 1st person</span>
@@ -58,7 +90,11 @@
   <div>Position: <span class="val" id="hud-pos">0, 0</span></div>
 </div>
 
-<div id="viewpoint-label"></div>
+<div id="viewpoint-label">
+  <div class="title-main"></div>
+  <div class="title-sub"></div>
+  <div class="title-line"></div>
+</div>
 
 <script type="module" src="/src/main.ts"></script>
 </body>

@@ -4,13 +4,9 @@ export class SceneManager {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  sceneEnv: THREE.Scene;
-  pmremGen: THREE.PMREMGenerator;
-  envTarget: THREE.WebGLRenderTarget | null = null;
 
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0xc8bfaa, 0.00008);
 
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 80000);
     this.camera.position.set(-400, 180, -250);
@@ -22,15 +18,12 @@ export class SceneManager {
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.45;
+    this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(this.renderer.domElement);
-
-    this.sceneEnv = new THREE.Scene();
-    this.pmremGen = new THREE.PMREMGenerator(this.renderer);
-    this.pmremGen.compileEquirectangularShader();
 
     window.addEventListener('resize', this.onResize);
   }
@@ -43,8 +36,6 @@ export class SceneManager {
 
   dispose() {
     window.removeEventListener('resize', this.onResize);
-    this.pmremGen.dispose();
-    if (this.envTarget) this.envTarget.dispose();
     this.renderer.dispose();
   }
 }

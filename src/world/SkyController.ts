@@ -27,11 +27,5 @@ export class SkyController {
 
     this.sky.material.uniforms['sunPosition'].value.copy(this.sun);
     water.material.uniforms['sunDirection'].value.copy(this.sun).normalize();
-
-    if (this.sm.envTarget) this.sm.envTarget.dispose();
-    this.sm.sceneEnv.add(this.sky);
-    this.sm.envTarget = this.sm.pmremGen.fromScene(this.sm.sceneEnv);
-    this.sm.scene.add(this.sky);
-    this.sm.scene.environment = this.sm.envTarget.texture;
   }
 }

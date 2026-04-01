@@ -4,49 +4,11 @@ interface BoatGroup extends THREE.Group {
   userData: { phase: number };
 }
 
-interface FogMesh extends THREE.Mesh {
-  userData: { baseX: number; baseZ: number; driftSpeed: number; phase: number };
-}
-
 export class Cityscape {
   boats: BoatGroup[] = [];
-  fogMeshes: FogMesh[] = [];
 
   build(scene: THREE.Scene) {
     const g = new THREE.Group();
-
-    // Alcatraz
-    const alcRockMat = new THREE.MeshStandardMaterial({ color: 0x8a7d6b, roughness: 0.9 });
-    const alcWallMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.8 });
-    const alcBase = new THREE.Mesh(new THREE.CylinderGeometry(55, 65, 18, 8), alcRockMat);
-    alcBase.position.set(1200, 4, 400);
-    alcBase.scale.set(1.1, 1, 0.7);
-    g.add(alcBase);
-    const alcTop = new THREE.Mesh(new THREE.CylinderGeometry(45, 55, 8, 8), alcRockMat);
-    alcTop.position.set(1200, 15, 400);
-    alcTop.scale.set(1.1, 1, 0.7);
-    g.add(alcTop);
-    const cellhouse = new THREE.Mesh(new THREE.BoxGeometry(80, 12, 18), alcWallMat);
-    cellhouse.position.set(1200, 25, 400);
-    g.add(cellhouse);
-    const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(82, 1.5, 20), new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.7 }));
-    roofMesh.position.set(1200, 31.5, 400);
-    g.add(roofMesh);
-    const lhTower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 20, 8), alcWallMat);
-    lhTower.position.set(1200, 29, 385);
-    g.add(lhTower);
-    const lhLamp = new THREE.Mesh(
-      new THREE.CylinderGeometry(3, 2.5, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xccddee, emissive: 0xffffaa, emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.3 }),
-    );
-    lhLamp.position.set(1200, 41, 385);
-    g.add(lhLamp);
-    const lhCap = new THREE.Mesh(new THREE.ConeGeometry(3.5, 3, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5 }));
-    lhCap.position.set(1200, 44, 385);
-    g.add(lhCap);
-    const wt = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 15, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.6, metalness: 0.3 }));
-    wt.position.set(1225, 26, 410);
-    g.add(wt);
 
     // Boats
     const boatPositions: [number, number, number][] = [
@@ -95,20 +57,6 @@ export class Cityscape {
       g.add(bg);
     }
 
-    // Fog bank
-    const fogMat = new THREE.MeshStandardMaterial({ color: 0xddd8cc, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide });
-    for (let i = 0; i < 8; i++) {
-      const fm = new THREE.Mesh(new THREE.SphereGeometry(200 + Math.random() * 300, 8, 6), fogMat) as unknown as FogMesh;
-      fm.position.set(-1500 - Math.random() * 2000, 30 + Math.random() * 100, -500 + Math.random() * 3000);
-      fm.scale.set(1, 0.3, 1);
-      fm.userData.baseX = fm.position.x;
-      fm.userData.baseZ = fm.position.z;
-      fm.userData.driftSpeed = 0.3 + Math.random() * 0.5;
-      fm.userData.phase = Math.random() * Math.PI * 2;
-      this.fogMeshes.push(fm);
-      g.add(fm);
-    }
-
     scene.add(g);
   }
 
@@ -117,10 +65,6 @@ export class Cityscape {
       b.position.y = Math.sin(elapsed * 0.8 + b.userData.phase) * 0.4;
       b.rotation.x = Math.sin(elapsed * 0.6 + b.userData.phase + 1) * 0.02;
       b.rotation.z = Math.sin(elapsed * 0.5 + b.userData.phase + 2) * 0.015;
-    }
-    for (const fm of this.fogMeshes) {
-      fm.position.x = fm.userData.baseX + Math.sin(elapsed * 0.02 * fm.userData.driftSpeed + fm.userData.phase) * 150;
-      fm.position.z = fm.userData.baseZ + Math.cos(elapsed * 0.015 * fm.userData.driftSpeed + fm.userData.phase) * 80;
     }
   }
 }

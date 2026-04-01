@@ -1,6 +1,5 @@
 export enum WeatherType {
   Clear = 'clear',
-  Fog = 'fog',
   Rain = 'rain',
 }
 
@@ -8,8 +7,6 @@ export interface WeatherState {
   type: WeatherType;
   /** 0-1 blend factor during transition */
   blend: number;
-  /** Fog density multiplier (1 = normal, 5 = heavy Karl) */
-  fogMultiplier: number;
   /** Sky overcast factor (0 = clear sky, 1 = fully overcast) */
   overcast: number;
   /** Rain intensity 0-1 */
@@ -22,21 +19,12 @@ export interface WeatherState {
 
 const WEATHER_PARAMS: Record<WeatherType, Omit<WeatherState, 'type' | 'blend'>> = {
   [WeatherType.Clear]: {
-    fogMultiplier: 1.0,
     overcast: 0.0,
     rainIntensity: 0.0,
     roadWetness: 0.0,
     desaturation: 0.0,
   },
-  [WeatherType.Fog]: {
-    fogMultiplier: 5.0,
-    overcast: 0.7,
-    rainIntensity: 0.0,
-    roadWetness: 0.2,
-    desaturation: 0.4,
-  },
   [WeatherType.Rain]: {
-    fogMultiplier: 2.5,
     overcast: 0.9,
     rainIntensity: 0.8,
     roadWetness: 0.8,
@@ -89,7 +77,6 @@ export class WeatherSystem {
     this.state = {
       type: this.target,
       blend: t,
-      fogMultiplier: lerp(a.fogMultiplier, b.fogMultiplier, t),
       overcast: lerp(a.overcast, b.overcast, t),
       rainIntensity: lerp(a.rainIntensity, b.rainIntensity, t),
       roadWetness: lerp(a.roadWetness, b.roadWetness, t),
