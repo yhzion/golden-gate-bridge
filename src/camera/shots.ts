@@ -1,0 +1,68 @@
+import type { ShotConfig } from './CinematicShot';
+
+export const CINEMATIC_SHOTS: ShotConfig[] = [
+  {
+    name: 'DRAMATIC REVEAL',
+    duration: 12,
+    keyframes: [
+      { position: [-300, 8, -500],   lookAt: [0, 67, 400] },
+      { position: [-200, 40, -200],  lookAt: [0, 67, 500] },
+      { position: [-120, 90, 100],   lookAt: [0, 80, 640] },
+      { position: [-80, 150, 400],   lookAt: [0, 100, 640] },
+    ],
+  },
+  {
+    name: 'TOWER FLY-BY',
+    duration: 10,
+    keyframes: [
+      { position: [40, 60, -100],    lookAt: [0, 150, 0] },
+      { position: [25, 120, -20],    lookAt: [0, 200, 0] },
+      { position: [-10, 200, 30],    lookAt: [0, 227, 0] },
+      { position: [-40, 180, 120],   lookAt: [0, 150, 300] },
+    ],
+  },
+  {
+    name: 'DECK DRIVE-THROUGH',
+    duration: 14,
+    easing: 'linear',
+    keyframes: [
+      { position: [3, 72, -250],     lookAt: [3, 70, 200] },
+      { position: [3, 72, 200],      lookAt: [3, 70, 600] },
+      { position: [3, 72, 640],      lookAt: [3, 70, 1000] },
+      { position: [3, 72, 1100],     lookAt: [3, 70, 1400] },
+      { position: [3, 72, 1500],     lookAt: [3, 70, 1800] },
+    ],
+  },
+  {
+    name: 'CABLE RIDE',
+    duration: 12,
+    keyframes: [
+      { position: [16, 72, -200],    lookAt: [16, 100, 0] },
+      { position: [16, 110, 100],    lookAt: [16, 180, 0] },
+      { position: [16, 200, -20],    lookAt: [0, 227, 0] },
+      { position: [16, 160, 300],    lookAt: [0, 100, 640] },
+      { position: [16, 90, 640],     lookAt: [0, 80, 640] },
+    ],
+  },
+  {
+    name: 'UNDER THE BRIDGE',
+    duration: 10,
+    keyframes: [
+      { position: [50, 12, -100],    lookAt: [0, 60, 200] },
+      { position: [30, 15, 200],     lookAt: [0, 67, 400] },
+      { position: [-10, 18, 640],    lookAt: [0, 67, 640] },
+      { position: [-40, 15, 1100],   lookAt: [0, 67, 900] },
+    ],
+  },
+  {
+    name: 'AERIAL PANORAMA',
+    duration: 14,
+    keyframes: [
+      { position: [-600, 350, -200], lookAt: [0, 50, 640] },
+      { position: [-400, 380, 640],  lookAt: [0, 50, 640] },
+      { position: [-100, 360, 1500], lookAt: [0, 50, 640] },
+      { position: [300, 340, 1200],  lookAt: [0, 50, 640] },
+      { position: [400, 320, 400],   lookAt: [0, 50, 640] },
+    ],
+  },
+];
