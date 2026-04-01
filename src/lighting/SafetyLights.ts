@@ -32,12 +32,17 @@ export class SafetyLights {
     this.elapsed = elapsed;
     const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
 
-    const strobePeriod = nightFactor > 0.5 ? 0.8 : 1.5;
-    const strobePhase = (elapsed % strobePeriod) / strobePeriod;
-    const strobeIntensity = 0.5 + 2.5 * Math.pow(Math.max(0, Math.sin(strobePhase * Math.PI * 2)), 4);
-
-    for (const mat of this.aviationMaterials) {
-      mat.emissiveIntensity = strobeIntensity;
+    if (nightFactor > 0.2) {
+      const strobePeriod = nightFactor > 0.5 ? 0.8 : 1.5;
+      const strobePhase = (elapsed % strobePeriod) / strobePeriod;
+      const strobeIntensity = 0.5 + 2.5 * Math.pow(Math.max(0, Math.sin(strobePhase * Math.PI * 2)), 4);
+      for (const mat of this.aviationMaterials) {
+        mat.emissiveIntensity = strobeIntensity * nightFactor;
+      }
+    } else {
+      for (const mat of this.aviationMaterials) {
+        mat.emissiveIntensity = 0;
+      }
     }
 
     const headlightFactor = THREE.MathUtils.smoothstep(nightFactor, 0.3, 0.6);
