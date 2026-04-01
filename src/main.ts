@@ -17,7 +17,7 @@ import { BirdSystem } from '@/traffic/BirdSystem';
 import { TimeOfDay } from '@/atmosphere/TimeOfDay';
 import { WeatherSystem, WeatherType } from '@/atmosphere/WeatherSystem';
 import { MaterialUpdater } from '@/atmosphere/MaterialUpdater';
-import { NightSky } from '@/atmosphere/NightSky';
+import { CelestialSystem } from '@/atmosphere/celestial/CelestialSystem';
 import { LightingManager } from '@/lighting/LightingManager';
 import { HUD } from '@/ui/HUD';
 
@@ -61,8 +61,7 @@ function init() {
   const timeOfDay = new TimeOfDay(17);
   const weatherSystem = new WeatherSystem();
   const matUpdater = new MaterialUpdater(sm, water, skyCtrl.sky, sunLight, hemisphere);
-  const nightSky = new NightSky();
-  sm.scene.add(nightSky.mesh);
+  const celestialSystem = new CelestialSystem(sm.scene);
   prog.style.width = '80%';
 
   // Cinematic Lighting System
@@ -128,7 +127,7 @@ function init() {
     matUpdater.update(timeState, weatherState, dt);
 
     const nightFactor = 1 - Math.min(1, Math.max(0, timeState.sunIntensity / 0.8));
-    nightSky.update(nightFactor, elapsed);
+    celestialSystem.update(nightFactor, timeState.hour, elapsed, dt, weatherState.overcast);
 
     // Cinematic lighting
     lightingManager.update(dt, elapsed, timeState, weatherState);
