@@ -14,6 +14,7 @@ import { FlightCamera } from '@/camera/FlightCamera';
 import { VehicleSystem } from '@/traffic/VehicleSystem';
 import { Cityscape } from '@/traffic/Cityscape';
 import { BirdSystem } from '@/traffic/BirdSystem';
+import { RoadSystem } from '@/roads/RoadSystem';
 import { TimeOfDay } from '@/atmosphere/TimeOfDay';
 import { WeatherSystem, WeatherType } from '@/atmosphere/WeatherSystem';
 import { MaterialUpdater } from '@/atmosphere/MaterialUpdater';
@@ -56,6 +57,9 @@ function init() {
 
   const birds = new BirdSystem();
   birds.build(sm.scene);
+
+  const roads = new RoadSystem();
+  roads.build(sm.scene);
   prog.style.width = '75%';
 
   const timeOfDay = new TimeOfDay(17);
@@ -141,6 +145,7 @@ function init() {
     vehicles.update(dt);
     cityscape.update(dt, elapsed);
     birds.update(dt, elapsed);
+    roads.update(dt);
 
     const qt = lightingManager.qualityTier;
     const tierLabel = qt.getMode() === 'auto'
