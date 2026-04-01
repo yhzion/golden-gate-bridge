@@ -63,6 +63,13 @@
 
 <div id="viewpoint-label"></div>
 
+<button id="driveBtn" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(192,69,48,0.85);color:#fff;border:none;padding:10px 28px;font:600 14px/1 'Helvetica Neue',sans-serif;letter-spacing:2px;cursor:pointer;border-radius:8px;z-index:50;backdrop-filter:blur(6px);transition:background 0.2s">DRIVE</button>
+
+<div id="drive-hud" style="display:none;position:fixed;bottom:24px;left:24px;color:#fff;font:500 14px/1.6 'Helvetica Neue',sans-serif;z-index:40;background:rgba(0,0,0,0.4);padding:10px 16px;border-radius:8px;backdrop-filter:blur(6px)">
+  <div><span style="opacity:0.6">SPEED</span> <span id="drive-speed" style="color:#c04530;font-weight:600">90</span> km/h</div>
+  <div><span style="opacity:0.6">VIEW</span> <span id="drive-view" style="color:#c04530;font-weight:600">3RD</span></div>
+</div>
+
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
