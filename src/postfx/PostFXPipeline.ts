@@ -47,6 +47,18 @@ export class PostFXPipeline {
   private depthRenderTarget: THREE.WebGLRenderTarget;
   private renderPass: RenderPass;
 
+  // Scratch objects to avoid per-frame allocations
+  private _sunDir = new THREE.Vector3();
+  private _sunWorldPos = new THREE.Vector3();
+  private _ndc = new THREE.Vector3();
+  private _screenPos = new THREE.Vector2();
+  private _cachedPositions: THREE.Vector3[] = [];
+  private _cachedColors: THREE.Color[] = [];
+  private _cachedIntensities: number[] = [];
+  private _screenPositions: THREE.Vector2[] = [];
+  private _screenColors: THREE.Color[] = [];
+  private _screenIntensities: number[] = [];
+
   constructor(
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene,
@@ -113,16 +125,21 @@ export class PostFXPipeline {
       this.bloom.strength = 0.3;
     }
 
+    // Cache light queries once per frame (avoids repeated clone/spread allocations)
+    const needsLights = nightFactor > 0.2 && tier !== 'low';
+    if (needsLights) {
+      this._cachedPositions = this.lightingManager.getLightPositions();
+      this._cachedColors = this.lightingManager.getLightColors();
+      this._cachedIntensities = this.lightingManager.getLightIntensities();
+    }
+
     const volEnabled = this.volumetricFog.isVolumetricEnabled()
       && nightFactor > 0.2
       && tier !== 'low';
     this.volumetricFog.enabled = volEnabled;
 
     if (volEnabled) {
-      const positions = this.lightingManager.getLightPositions();
-      const colors = this.lightingManager.getLightColors();
-      const intensities = this.lightingManager.getLightIntensities();
-      this.volumetricFog.setLights(positions, colors, intensities);
+      this.volumetricFog.setLights(this._cachedPositions, this._cachedColors, this._cachedIntensities);
 
       const baseDensity = timeState.fogDensity * weatherState.fogMultiplier;
       const volDensity = baseDensity * (nightFactor > 0.5 ? 3.0 : 1.0);
@@ -136,18 +153,17 @@ export class PostFXPipeline {
 
     if (godRayEnabled) {
       if (timeState.sunElevation > 0 && nightFactor < 0.5) {
-        const sunDir = new THREE.Vector3().setFromSphericalCoords(
+        this._sunDir.setFromSphericalCoords(
           1,
           THREE.MathUtils.degToRad(90 - timeState.sunElevation),
           THREE.MathUtils.degToRad(timeState.sunAzimuth),
         );
-        const sunWorldPos = sunDir.multiplyScalar(5000).add(this.camera.position);
-        this.godRays.setLightWorldPos(sunWorldPos, this.camera);
+        this._sunWorldPos.copy(this._sunDir).multiplyScalar(5000).add(this.camera.position);
+        this.godRays.setLightWorldPos(this._sunWorldPos, this.camera);
         this.godRays.setIntensity(0.3);
       } else if (nightFactor > 0.5 && weatherState.fogMultiplier > 2) {
-        const positions = this.lightingManager.getLightPositions();
-        if (positions.length > 0) {
-          this.godRays.setLightWorldPos(positions[0], this.camera);
+        if (this._cachedPositions.length > 0) {
+          this.godRays.setLightWorldPos(this._cachedPositions[0], this.camera);
           this.godRays.setIntensity(0.8);
         }
       } else {
@@ -159,21 +175,19 @@ export class PostFXPipeline {
     this.lensFlare.enabled = flareEnabled;
 
     if (flareEnabled) {
-      const positions = this.lightingManager.getLightPositions();
-      const colors = this.lightingManager.getLightColors();
-      const intensities = this.lightingManager.getLightIntensities();
-      const screenPositions: THREE.Vector2[] = [];
-      const screenColors: THREE.Color[] = [];
-      const screenIntensities: number[] = [];
+      this._screenPositions.length = 0;
+      this._screenColors.length = 0;
+      this._screenIntensities.length = 0;
 
-      for (let i = 0; i < positions.length; i++) {
-        const ndc = positions[i].clone().project(this.camera);
-        if (ndc.z > 1 || Math.abs(ndc.x) > 1.2 || Math.abs(ndc.y) > 1.2) continue;
-        screenPositions.push(new THREE.Vector2(ndc.x * 0.5 + 0.5, ndc.y * 0.5 + 0.5));
-        screenColors.push(colors[i]);
-        screenIntensities.push(intensities[i] * nightFactor * 0.15);
+      for (let i = 0; i < this._cachedPositions.length; i++) {
+        this._ndc.copy(this._cachedPositions[i]).project(this.camera);
+        if (this._ndc.z > 1 || Math.abs(this._ndc.x) > 1.2 || Math.abs(this._ndc.y) > 1.2) continue;
+        this._screenPos.set(this._ndc.x * 0.5 + 0.5, this._ndc.y * 0.5 + 0.5);
+        this._screenPositions.push(this._screenPos.clone());
+        this._screenColors.push(this._cachedColors[i]);
+        this._screenIntensities.push(this._cachedIntensities[i] * nightFactor * 0.15);
       }
-      this.lensFlare.setFlares(screenPositions, screenColors, screenIntensities);
+      this.lensFlare.setFlares(this._screenPositions, this._screenColors, this._screenIntensities);
     }
   }
 

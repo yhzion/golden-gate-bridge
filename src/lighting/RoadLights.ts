@@ -15,6 +15,7 @@ export class RoadLights {
   private lampPositions: LampPosition[] = [];
   private pool: THREE.PointLight[] = [];
   private activeCount = 0;
+  private sortBuffer: { pos: THREE.Vector3; dist: number }[] = [];
 
   constructor(scene: THREE.Scene) {
     const len = BRIDGE.mainSpan + BRIDGE.sideSpan * 2;
@@ -26,7 +27,9 @@ export class RoadLights {
         const lz = startZ + i * LIGHT_SPACING + LIGHT_SPACING / 2;
         const lx = side * (BRIDGE.deckW / 2 + 0.8 + 0.8);
         const ly = BRIDGE.deckH + 4.55;
-        this.lampPositions.push({ pos: new THREE.Vector3(lx, ly, lz) });
+        const pos = new THREE.Vector3(lx, ly, lz);
+        this.lampPositions.push({ pos });
+        this.sortBuffer.push({ pos, dist: 0 });
       }
     }
 
@@ -50,15 +53,17 @@ export class RoadLights {
 
     const maxActive = tier === 'high' ? 20 : tier === 'medium' ? 8 : 4;
 
-    const sorted = this.lampPositions
-      .map((lp, i) => ({ lp, dist: cameraPos.distanceTo(lp.pos), idx: i }))
-      .sort((a, b) => a.dist - b.dist);
+    // Update distances in-place, then sort (no per-frame allocations)
+    for (let i = 0; i < this.sortBuffer.length; i++) {
+      this.sortBuffer[i].dist = cameraPos.distanceTo(this.sortBuffer[i].pos);
+    }
+    this.sortBuffer.sort((a, b) => a.dist - b.dist);
 
-    const count = Math.min(maxActive, this.pool.length, sorted.length);
+    const count = Math.min(maxActive, this.pool.length, this.sortBuffer.length);
     for (let i = 0; i < this.pool.length; i++) {
-      if (i < count && sorted[i].dist < 1000) {
+      if (i < count && this.sortBuffer[i].dist < 1000) {
         this.pool[i].visible = true;
-        this.pool[i].position.copy(sorted[i].lp.pos);
+        this.pool[i].position.copy(this.sortBuffer[i].pos);
         this.pool[i].intensity = lightFactor * 0.8;
       } else {
         this.pool[i].visible = false;
