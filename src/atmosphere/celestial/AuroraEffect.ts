@@ -41,6 +41,16 @@ export class AuroraEffect {
   `;
 
   update(nightFactor: number, elapsed: number, dt: number): number {
+    if (nightFactor < 0.80) {
+      if (this.active) {
+        this.active = false;
+        this.intensity = 0;
+        this.cooldown = 30;
+      }
+      this.intensity = 0;
+      return 0;
+    }
+
     if (this.active) {
       this.lifetime += dt;
 
@@ -56,11 +66,6 @@ export class AuroraEffect {
         this.cooldown = 30;
       }
       return this.intensity;
-    }
-
-    if (nightFactor < 0.80) {
-      this.intensity = 0;
-      return 0;
     }
 
     this.cooldown -= dt;

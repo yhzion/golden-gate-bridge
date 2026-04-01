@@ -23,7 +23,7 @@ export class StarField {
       float time,
       float constellationStars[63]
     ) {
-      if (nightFactor < 0.15) return vec3(0.0);
+      if (nightFactor < 0.20) return vec3(0.0);
 
       float altitude = dir.y;
       if (altitude < 0.0) return vec3(0.0);
@@ -38,7 +38,7 @@ export class StarField {
       float dimming = (1.0 - moonlightFactor * 0.6) * (1.0 - lightPollution * 0.5);
 
       // === BRIGHT STARS (Stage 1: nF 0.25+) ===
-      float stage1 = smoothstep(0.15, 0.35, nightFactor);
+      float stage1 = smoothstep(0.25, 0.45, nightFactor);
       if (stage1 > 0.0) {
         float scale = 60.0;
         vec2 cell = floor(starUV * scale);
@@ -62,7 +62,7 @@ export class StarField {
       }
 
       // === DIM STARS (Stage 2: nF 0.50+) ===
-      float stage2 = smoothstep(0.40, 0.60, nightFactor);
+      float stage2 = smoothstep(0.50, 0.70, nightFactor);
       if (stage2 > 0.0) {
         for (int layer = 0; layer < 3; layer++) {
           float scale = 90.0 + float(layer) * 50.0;

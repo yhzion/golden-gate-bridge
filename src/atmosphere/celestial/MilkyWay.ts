@@ -30,7 +30,7 @@ export class MilkyWay {
       float moonlightFactor,
       float lightPollution
     ) {
-      float visibility = smoothstep(0.50, 0.70, nightFactor);
+      float visibility = smoothstep(0.60, 0.80, nightFactor);
       if (visibility < 0.01) return vec3(0.0);
 
       float altitude = dir.y;

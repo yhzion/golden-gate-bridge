@@ -37,7 +37,7 @@ export class PlanetRenderer {
   }
 
   update(planets: PlanetState[], nightFactor: number, overcastFactor: number): void {
-    const visibility = this.smoothstep(0.10, 0.30, nightFactor) * (1 - overcastFactor);
+    const visibility = this.smoothstep(0.20, 0.40, nightFactor) * (1 - overcastFactor);
 
     for (const planet of planets) {
       const sprite = this.sprites.get(planet.name);

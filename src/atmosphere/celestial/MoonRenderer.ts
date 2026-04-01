@@ -55,7 +55,7 @@ export class MoonRenderer {
     sunDirection: THREE.Vector3,
     overcastFactor: number,
   ): number {
-    const visibility = this.smoothstep(0.05, 0.25, nightFactor) * (1 - overcastFactor * 0.7);
+    const visibility = this.smoothstep(0.15, 0.35, nightFactor) * (1 - overcastFactor * 0.7);
 
     if (moonState.altitude < -0.02 || visibility < 0.01) {
       this.moonMesh.visible = false;
