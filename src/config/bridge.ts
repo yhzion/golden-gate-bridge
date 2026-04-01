@@ -63,3 +63,26 @@ export const DECK = {
   railPicketSpacing: 0.15,
   lightSpacing: 50,
 } as const;
+
+export const APPROACH = {
+  archSpan: 52,
+  archRise: 15,
+  archTubeR: 0.6,
+  archBraceR: 0.2,
+  archBracePairs: 8,
+  sfAncW: 28,
+  sfAncH: 20,
+  sfAncD: 40,
+  sfAncSteps: 4,
+  marinAncW: 20,
+  marinAncH: 14,
+  marinAncD: 30,
+  gantryW: 30,
+  gantryH: 6,
+  gantryCount: 3,
+  sfViaductLen: 343,
+  marinViaductLen: 343,
+  viaductSpanLen: 30,
+  viaductColW: 1.5,
+  viaductColD: 2.0,
+} as const;
