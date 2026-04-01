@@ -12,15 +12,15 @@ import { BridgeAssembler } from '@/landmarks/bridge/BridgeAssembler';
 import { landmarkRegistry } from '@/landmarks/index';
 import { FlightCamera } from '@/camera/FlightCamera';
 import { VehicleSystem } from '@/traffic/VehicleSystem';
+import { updateRetroreflection } from '@/traffic/RetroreflectionSystem';
 import { Cityscape } from '@/traffic/Cityscape';
 import { BirdSystem } from '@/traffic/BirdSystem';
-import { RoadSystem } from '@/roads/RoadSystem';
 import { TimeOfDay } from '@/atmosphere/TimeOfDay';
 import { WeatherSystem, WeatherType } from '@/atmosphere/WeatherSystem';
 import { MaterialUpdater } from '@/atmosphere/MaterialUpdater';
-import { CelestialSystem } from '@/atmosphere/celestial/CelestialSystem';
 import { LightingManager } from '@/lighting/LightingManager';
 import { HUD } from '@/ui/HUD';
+import { Clock } from '@/ui/Clock';
 
 function init() {
   const prog = document.getElementById('prog') as HTMLElement;
@@ -58,14 +58,11 @@ function init() {
   const birds = new BirdSystem();
   birds.build(sm.scene);
 
-  const roads = new RoadSystem();
-  roads.build(sm.scene);
   prog.style.width = '75%';
 
-  const timeOfDay = new TimeOfDay(17);
+  const timeOfDay = new TimeOfDay();
   const weatherSystem = new WeatherSystem();
   const matUpdater = new MaterialUpdater(sm, water, skyCtrl.sky, sunLight, hemisphere);
-  const celestialSystem = new CelestialSystem(sm.scene);
   prog.style.width = '80%';
 
   // Cinematic Lighting System
@@ -76,6 +73,7 @@ function init() {
 
   // UI
   const hud = new HUD();
+  const clock = new Clock();
   prog.style.width = '90%';
 
   const postfx = new PostFXPipeline(sm.renderer, sm.scene, sm.camera, lightingManager);
@@ -83,11 +81,9 @@ function init() {
 
   input.setCallbacks(
     (n) => {
-      flight.autoFly = false;
       if (n === 7) { weatherSystem.setWeather(WeatherType.Clear); return; }
       if (n === 8) { weatherSystem.setWeather(WeatherType.Fog); return; }
       if (n === 9) { weatherSystem.setWeather(WeatherType.Rain); return; }
-      flight.goToViewpoint(n);
     },
     () => {
       timeOfDay.paused = !timeOfDay.paused;
@@ -95,15 +91,31 @@ function init() {
     (key) => {
       if (key === 'L') {
         lightingManager.cycleQualityTier();
-      } else if (key === 'V') {
-        const vf = postfx.volumetricFog;
-        vf.setVolumetricEnabled(!vf.isVolumetricEnabled());
       } else if (key === 'G') {
         const gr = postfx.godRays;
         gr.setGodRaysEnabled(!gr.isGodRaysEnabled());
       }
     },
   );
+
+  // Cinematic ↔ free-flight mode switch
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === sm.renderer.domElement) {
+      flight.enterFreeFlight();
+    } else {
+      flight.enterCinematic();
+    }
+  });
+
+  // Shot name display
+  const shotLabel = document.getElementById('viewpoint-label');
+  flight.director.onShotChange = (name) => {
+    if (shotLabel) {
+      shotLabel.textContent = name;
+      shotLabel.style.opacity = '1';
+      setTimeout(() => (shotLabel.style.opacity = '0'), 2000);
+    }
+  };
 
   // UI — help toggle
   const helpToggle = document.getElementById('helpToggle');
@@ -126,13 +138,11 @@ function init() {
 
   loop.register((dt, elapsed) => {
     water.material.uniforms['time'].value = elapsed * 0.4;
+    water.material.uniforms['glitterTime'].value = elapsed * 0.6;
 
     const timeState = timeOfDay.update(dt);
     const weatherState = weatherSystem.update(dt);
     matUpdater.update(timeState, weatherState, dt);
-
-    const nightFactor = 1 - Math.min(1, Math.max(0, timeState.sunIntensity / 0.8));
-    const celestialResult = celestialSystem.update(nightFactor, timeState.hour, elapsed, dt, weatherState.overcast);
 
     // Cinematic lighting
     lightingManager.update(dt, elapsed, timeState);
@@ -144,8 +154,15 @@ function init() {
     flight.update(dt);
     vehicles.update(dt);
     cityscape.update(dt, elapsed);
-    birds.update(dt, elapsed);
-    roads.update(dt);
+    const nightFactor = 1 - Math.min(timeState.sunIntensity / 0.25, 1);
+    birds.update(dt, elapsed, nightFactor);
+
+    // Retroreflective lane markings — active only in drive mode (1st person)
+    const isDriveMode = !flight.director.isActive;
+    const hl = vehicles.getHeadlightData(sm.camera.position, 16);
+    updateRetroreflection(hl.data, hl.count, nightFactor, isDriveMode);
+
+    clock.update(dt);
 
     const qt = lightingManager.qualityTier;
     const tierLabel = qt.getMode() === 'auto'

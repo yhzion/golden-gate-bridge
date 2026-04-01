@@ -30,7 +30,7 @@ const KEY_MAP: Record<string, keyof Pick<ControlState, 'fwd' | 'back' | 'left' |
 export class InputManager {
   ctrl: ControlState;
   private canvas: HTMLCanvasElement;
-  private onViewpoint: ((n: number) => void) | null = null;
+  private onWeatherKey: ((n: number) => void) | null = null;
   private onToggleFog: (() => void) | null = null;
   private onLightingKey: ((key: 'L' | 'V' | 'G') => void) | null = null;
   private hideTimer: number | null = null;
@@ -60,11 +60,11 @@ export class InputManager {
   }
 
   setCallbacks(
-    onViewpoint: (n: number) => void,
+    onWeatherKey: (n: number) => void,
     onToggleFog: () => void,
     onLightingKey?: (key: 'L' | 'V' | 'G') => void,
   ) {
-    this.onViewpoint = onViewpoint;
+    this.onWeatherKey = onWeatherKey;
     this.onToggleFog = onToggleFog;
     this.onLightingKey = onLightingKey ?? null;
   }
@@ -126,8 +126,8 @@ export class InputManager {
     if (e.code === 'KeyL') this.onLightingKey?.('L');
     if (e.code === 'KeyV') this.onLightingKey?.('V');
     if (e.code === 'KeyG') this.onLightingKey?.('G');
-    if (e.code >= 'Digit1' && e.code <= 'Digit9') {
-      this.onViewpoint?.(+e.code.slice(5));
+    if (e.code >= 'Digit7' && e.code <= 'Digit9') {
+      this.onWeatherKey?.(+e.code.slice(5));
     }
   };
 
