@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Claude Code - include skills, exclude temp files
+.claude/scheduled_tasks.lock
+.claude/projects/
+
+# Superpowers - include skills, exclude temp state
+.superpowers/brainstorm/*/state/

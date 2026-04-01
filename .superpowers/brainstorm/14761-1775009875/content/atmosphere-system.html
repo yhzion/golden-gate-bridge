@@ -1,0 +1,197 @@
+<h2>Atmosphere System</h2>
+<p class="subtitle">낮/밤 사이클 + 날씨 + 시네마틱 포스트프로세싱 파이프라인</p>
+
+<!-- Time of Day Timeline -->
+<div class="mockup">
+  <div class="mockup-header">Time of Day Cycle</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 860 200" style="width:100%;font-family:monospace">
+      <!-- Timeline bar -->
+      <defs>
+        <linearGradient id="dayGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#0a0a2a"/>
+          <stop offset="15%" style="stop-color:#1a0a30"/>
+          <stop offset="22%" style="stop-color:#c04530"/>
+          <stop offset="30%" style="stop-color:#e8a060"/>
+          <stop offset="45%" style="stop-color:#87ceeb"/>
+          <stop offset="55%" style="stop-color:#6bb3d9"/>
+          <stop offset="70%" style="stop-color:#e8a060"/>
+          <stop offset="78%" style="stop-color:#c04530"/>
+          <stop offset="85%" style="stop-color:#1a0a30"/>
+          <stop offset="100%" style="stop-color:#0a0a2a"/>
+        </linearGradient>
+      </defs>
+      <rect x="50" y="30" width="760" height="40" rx="6" fill="url(#dayGrad)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+      <!-- Time labels -->
+      <text x="50" y="90" text-anchor="middle" fill="#666" font-size="10">00:00</text>
+      <text x="164" y="90" text-anchor="middle" fill="#c04530" font-size="10" font-weight="bold">04:00</text>
+      <text x="240" y="90" text-anchor="middle" fill="#e8a060" font-size="10" font-weight="bold">06:30</text>
+      <text x="430" y="90" text-anchor="middle" fill="#87ceeb" font-size="10">12:00</text>
+      <text x="582" y="90" text-anchor="middle" fill="#e8a060" font-size="10" font-weight="bold">18:00</text>
+      <text x="658" y="90" text-anchor="middle" fill="#c04530" font-size="10" font-weight="bold">20:00</text>
+      <text x="810" y="90" text-anchor="middle" fill="#666" font-size="10">24:00</text>
+
+      <!-- Phase labels -->
+      <text x="107" y="22" text-anchor="middle" fill="#444" font-size="9">NIGHT</text>
+      <text x="200" y="22" text-anchor="middle" fill="#c04530" font-size="9">DAWN</text>
+      <text x="335" y="22" text-anchor="middle" fill="#87ceeb" font-size="9">DAY</text>
+      <text x="505" y="22" text-anchor="middle" fill="#6bb3d9" font-size="9">AFTERNOON</text>
+      <text x="620" y="22" text-anchor="middle" fill="#e8a060" font-size="9">GOLDEN HOUR</text>
+      <text x="725" y="22" text-anchor="middle" fill="#1a0a30" font-size="9">DUSK</text>
+
+      <!-- Tick marks -->
+      <line x1="164" y1="70" x2="164" y2="78" stroke="#c04530" stroke-width="1"/>
+      <line x1="240" y1="70" x2="240" y2="78" stroke="#e8a060" stroke-width="1"/>
+      <line x1="430" y1="70" x2="430" y2="78" stroke="#87ceeb" stroke-width="1"/>
+      <line x1="582" y1="70" x2="582" y2="78" stroke="#e8a060" stroke-width="1"/>
+      <line x1="658" y1="70" x2="658" y2="78" stroke="#c04530" stroke-width="1"/>
+
+      <!-- What changes per phase -->
+      <rect x="50" y="105" width="760" height="85" rx="6" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="70" y="125" fill="#888" font-size="11">Parameter</text>
+      <text x="200" y="125" fill="#444" font-size="11">Night</text>
+      <text x="320" y="125" fill="#c04530" font-size="11">Dawn/Dusk</text>
+      <text x="460" y="125" fill="#87ceeb" font-size="11">Day</text>
+      <text x="600" y="125" fill="#e8a060" font-size="11">Golden Hour</text>
+      <text x="740" y="125" fill="#0a0a2a" font-size="11">Night</text>
+
+      <text x="70" y="147" fill="#aaa" font-size="10">Sun elevation</text>
+      <text x="200" y="147" fill="#666" font-size="10">-30°</text>
+      <text x="320" y="147" fill="#ddd" font-size="10">2~15°</text>
+      <text x="460" y="147" fill="#ddd" font-size="10">45~60°</text>
+      <text x="600" y="147" fill="#ddd" font-size="10">5~15°</text>
+      <text x="740" y="147" fill="#666" font-size="10">-30°</text>
+
+      <text x="70" y="163" fill="#aaa" font-size="10">Window emissive</text>
+      <text x="200" y="163" fill="#FFD54F" font-size="10">0.8~1.0</text>
+      <text x="320" y="163" fill="#ddd" font-size="10">0.3~0.6</text>
+      <text x="460" y="163" fill="#ddd" font-size="10">0.0~0.1</text>
+      <text x="600" y="163" fill="#ddd" font-size="10">0.2~0.5</text>
+      <text x="740" y="163" fill="#FFD54F" font-size="10">0.8~1.0</text>
+
+      <text x="70" y="179" fill="#aaa" font-size="10">Fog density</text>
+      <text x="200" y="179" fill="#ddd" font-size="10">0.00015</text>
+      <text x="320" y="179" fill="#ddd" font-size="10">0.00012</text>
+      <text x="460" y="179" fill="#ddd" font-size="10">0.00008</text>
+      <text x="600" y="179" fill="#ddd" font-size="10">0.00010</text>
+      <text x="740" y="179" fill="#ddd" font-size="10">0.00015</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Weather States -->
+<div class="section" style="margin-top:20px">
+  <h3 style="color:#FF9800;margin-bottom:12px">Weather States</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;border:1px solid rgba(255,152,0,0.15)">
+      <h4 style="color:#FFB74D;margin:0 0 8px;font-size:13px">&#9728; Clear</h4>
+      <div style="font-size:11px;color:#999;line-height:1.8">
+        <div>Sky: Rayleigh scattering</div>
+        <div>Fog: minimal (0.00005)</div>
+        <div>Shadows: sharp, high contrast</div>
+        <div>Water: reflective, calm</div>
+        <div>PostFX: warm color grade</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;border:1px solid rgba(255,152,0,0.15)">
+      <h4 style="color:#FFB74D;margin:0 0 8px;font-size:13px">&#127787; SF Fog (Karl)</h4>
+      <div style="font-size:11px;color:#999;line-height:1.8">
+        <div>Sky: overcast gradient</div>
+        <div>Fog: heavy volumetric (0.0004)</div>
+        <div>Shadows: diffuse, low contrast</div>
+        <div>Water: muted, gray-blue</div>
+        <div>PostFX: desaturated, cool tones</div>
+        <div style="color:#FF9800;margin-top:4px">Golden Gate half-hidden in fog!</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;border:1px solid rgba(255,152,0,0.15)">
+      <h4 style="color:#FFB74D;margin:0 0 8px;font-size:13px">&#127783; Rain</h4>
+      <div style="font-size:11px;color:#999;line-height:1.8">
+        <div>Sky: dark gray overcast</div>
+        <div>Fog: medium (0.0002)</div>
+        <div>Shadows: nearly invisible</div>
+        <div>Water: agitated, dark</div>
+        <div>PostFX: rain drops on lens,</div>
+        <div>&nbsp;&nbsp;wet surface reflections</div>
+        <div>&nbsp;&nbsp;(road roughness → 0.3)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PostFX Pipeline -->
+<div class="mockup" style="margin-top:20px">
+  <div class="mockup-header">PostFX Pipeline (EffectComposer Chain)</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 860 160" style="width:100%;font-family:monospace">
+      <!-- Pipeline stages -->
+      <rect x="20" y="40" width="100" height="60" rx="6" fill="rgba(192,69,48,0.2)" stroke="#c04530" stroke-width="1.5"/>
+      <text x="70" y="65" text-anchor="middle" fill="#c04530" font-size="11" font-weight="bold">RenderPass</text>
+      <text x="70" y="82" text-anchor="middle" fill="#888" font-size="9">Scene → Buffer</text>
+
+      <text x="135" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="150" y="40" width="100" height="60" rx="6" fill="rgba(156,39,176,0.2)" stroke="#9C27B0" stroke-width="1.5"/>
+      <text x="200" y="65" text-anchor="middle" fill="#CE93D8" font-size="11" font-weight="bold">Bloom</text>
+      <text x="200" y="82" text-anchor="middle" fill="#888" font-size="9">가로등, 창문광</text>
+
+      <text x="265" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="280" y="40" width="100" height="60" rx="6" fill="rgba(0,188,212,0.2)" stroke="#00BCD4" stroke-width="1.5"/>
+      <text x="330" y="65" text-anchor="middle" fill="#00BCD4" font-size="11" font-weight="bold">DoF</text>
+      <text x="330" y="82" text-anchor="middle" fill="#888" font-size="9">BokehPass</text>
+
+      <text x="395" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="410" y="40" width="100" height="60" rx="6" fill="rgba(76,175,80,0.2)" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="460" y="65" text-anchor="middle" fill="#4CAF50" font-size="11" font-weight="bold">Motion Blur</text>
+      <text x="460" y="82" text-anchor="middle" fill="#888" font-size="9">속도 기반</text>
+
+      <text x="525" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="540" y="40" width="100" height="60" rx="6" fill="rgba(255,152,0,0.2)" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="590" y="65" text-anchor="middle" fill="#FFB74D" font-size="11" font-weight="bold">Color Grade</text>
+      <text x="590" y="82" text-anchor="middle" fill="#888" font-size="9">시간대별 LUT</text>
+
+      <text x="655" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="670" y="40" width="100" height="60" rx="6" fill="rgba(244,67,54,0.2)" stroke="#f44336" stroke-width="1.5"/>
+      <text x="720" y="65" text-anchor="middle" fill="#ef9a9a" font-size="11" font-weight="bold">Film Grain</text>
+      <text x="720" y="82" text-anchor="middle" fill="#888" font-size="9">+ Vignette</text>
+
+      <text x="783" y="73" fill="#555" font-size="16">→</text>
+
+      <rect x="795" y="45" width="50" height="50" rx="25" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+      <text x="820" y="75" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">OUT</text>
+
+      <!-- Conditional passes -->
+      <text x="330" y="125" text-anchor="middle" fill="#00BCD4" font-size="9">* 고도 낮을 때만 활성</text>
+      <text x="460" y="125" text-anchor="middle" fill="#4CAF50" font-size="9">* 속도 > 30m/s 일 때</text>
+      <text x="720" y="125" text-anchor="middle" fill="#ef9a9a" font-size="9">* 항상 (미세한 노이즈)</text>
+
+      <!-- Weather overlay note -->
+      <rect x="20" y="135" width="840" height="20" rx="4" fill="rgba(255,152,0,0.06)"/>
+      <text x="430" y="149" text-anchor="middle" fill="#FF9800" font-size="10">Rain 날씨 시: RainDropPass (렌즈 물방울) 가 Film Grain 앞에 삽입</text>
+    </svg>
+  </div>
+</div>
+
+<!-- MaterialUpdater Detail -->
+<div class="section" style="margin-top:20px;padding:16px;background:rgba(255,152,0,0.06);border-radius:8px;border:1px solid rgba(255,152,0,0.15)">
+  <h3 style="color:#FF9800;margin:0 0 12px">MaterialUpdater — 크로스커팅 해결</h3>
+  <div style="font-family:monospace;font-size:12px;color:#bbb;line-height:2">
+    <div><span style="color:#FF9800">Input:</span> { sunAngle, sunColor, ambientIntensity, fogColor, fogDensity, weatherState }</div>
+    <div><span style="color:#FF9800">Updates:</span></div>
+    <div>&nbsp;&nbsp;• <span style="color:#2196F3">Landmarks</span> — bridge emissive (항공등 밝기), 콘크리트 ambient</div>
+    <div>&nbsp;&nbsp;• <span style="color:#9C27B0">Buildings</span> — 창문 emissive (밤: 랜덤 on/off), 외벽 color tone</div>
+    <div>&nbsp;&nbsp;• <span style="color:#4CAF50">Terrain</span> — vertex color 보정 (야간: 어둡게, 골든아워: 따뜻하게)</div>
+    <div>&nbsp;&nbsp;• <span style="color:#00BCD4">Water</span> — waterColor, sunDirection, distortionScale</div>
+    <div>&nbsp;&nbsp;• <span style="color:#FDD835">Vehicles</span> — 헤드라이트 emissive (야간 자동 점등)</div>
+    <div>&nbsp;&nbsp;• <span style="color:#9E9E9E">Street lights</span> — emissive on/off (일몰 시 점등)</div>
+    <div style="margin-top:8px;color:#FF9800;font-size:11px">
+      핵심: 각 모듈은 MaterialUpdater를 모름. MaterialUpdater가 scene을 순회하며 재질 프로퍼티를 직접 갱신.
+      → 모듈 간 의존성 제로.
+    </div>
+  </div>
+</div>

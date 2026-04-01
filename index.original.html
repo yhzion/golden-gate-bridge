@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golden Gate Bridge - 3D Flight Experience</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{overflow:hidden;background:#000;font-family:'Helvetica Neue',sans-serif;color:#fff}
+  canvas{display:block}
+  #loading{position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:100;transition:opacity 1.5s}
+  .loading-content{text-align:center}
+  .loading-content h1{font-size:2.4rem;font-weight:200;letter-spacing:0.5em;margin-bottom:1rem;color:#c04530}
+  .loading-content p{font-size:0.9rem;color:#888;margin-bottom:2rem;letter-spacing:0.2em}
+  .progress-bar{width:300px;height:2px;background:#222;border-radius:1px;overflow:hidden;margin:0 auto}
+  .progress-fill{width:0%;height:100%;background:linear-gradient(90deg,#c04530,#e8a060);transition:width 0.3s}
+  #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;pointer-events:none;transition:opacity 0.8s}
+  .overlay-box{background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:3rem 4rem;text-align:center;pointer-events:auto;cursor:pointer}
+  .overlay-box h2{font-size:1.6rem;font-weight:300;letter-spacing:0.3em;margin-bottom:1.5rem}
+  .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 2rem;text-align:left;font-size:0.8rem;color:#aaa}
+  .controls-grid span:nth-child(odd){color:#c04530;font-weight:600}
+  #hud{position:fixed;bottom:20px;left:20px;z-index:40;font-size:0.75rem;color:rgba(255,255,255,0.6);pointer-events:none;transition:opacity 0.5s}
+  #hud div{margin-bottom:4px}
+  #hud .val{color:#c04530;font-weight:600;font-size:0.85rem}
+  #viewpoint-label{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.4rem;font-weight:200;letter-spacing:0.4em;color:rgba(255,255,255,0.8);pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:40;text-shadow:0 2px 20px rgba(0,0,0,0.5)}
+  #minimap{position:fixed;bottom:20px;right:20px;width:140px;height:140px;background:rgba(0,20,40,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:8px;z-index:40;pointer-events:none;overflow:hidden}
+  #minimap canvas{width:100%;height:100%}
+</style>
+</head>
+<body>
+<div id="loading"><div class="loading-content">
+  <h1>GOLDEN GATE BRIDGE</h1>
+  <p>Loading 3D Experience</p>
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+</div></div>
+
+<div id="overlay"><div class="overlay-box" id="startBtn">
+  <h2>CLICK TO FLY</h2>
+  <div class="controls-grid">
+    <span>W A S D</span><span>Move</span>
+    <span>Mouse</span><span>Look around</span>
+    <span>Space / Q</span><span>Up / Down</span>
+    <span>Shift</span><span>Boost (3x)</span>
+    <span>Scroll</span><span>Adjust speed</span>
+    <span>1 - 6</span><span>Viewpoints</span>
+    <span>F</span><span>Toggle fog</span>
+    <span>ESC</span><span>Release mouse</span>
+  </div>
+</div></div>
+
+<div id="hud" style="opacity:0">
+  <div>Speed: <span class="val" id="hud-speed">50</span> m/s</div>
+  <div>Altitude: <span class="val" id="hud-alt">180</span> m</div>
+  <div>Position: <span class="val" id="hud-pos">0, 0</span></div>
+</div>
+
+<div id="viewpoint-label"></div>
+<div id="minimap"></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { Water } from 'three/addons/objects/Water.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* =========================================================
+   CONFIGURATION
+   ========================================================= */
+const B = {
+  mainSpan: 1280, sideSpan: 343, totalLength: 1966,
+  deckH: 67, deckW: 27.4, towerH: 227,
+  cableR: 0.46, cableSag: 84, // cable lowest point above water (~84m real GGB)
+  suspSpacing: 15.2,
+  color: 0xc04530 // International Orange
+};
+const LANE_W = 3.0;
+const LANES = [-6.75,-3.75,-0.75, 0.75, 3.75, 6.75];
+const CAR_COLORS = [0xffffff,0xffffff,0xcccccc,0xbbbbbb,0x222222,0x111111,0x333333,0xcc2222,0x2244aa,0x226622,0xddaa22,0x882244,0x445566];
+
+let scene, camera, renderer, composer, water, sky, sun = new THREE.Vector3();
+let sceneEnv, pmremGen, envTarget;
+const clock = new THREE.Clock();
+let bridgeMat, cableMat, concreteMat, roadMat;
+
+/* =========================================================
+   NOISE
+   ========================================================= */
+function hash2(x, y) {
+  let n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+}
+function smoothNoise(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy), b = hash2(ix+1, iy), c = hash2(ix, iy+1), d = hash2(ix+1, iy+1);
+  return a + (b-a)*sx + (c-a)*sy + (a-b-c+d)*sx*sy;
+}
+function fbm(x, y, oct = 5) {
+  let v = 0, a = 1, f = 1, m = 0;
+  for (let i = 0; i < oct; i++) { v += a * smoothNoise(x*f, y*f); m += a; a *= 0.5; f *= 2.1; }
+  return v / m;
+}
+
+/* =========================================================
+   MATERIALS
+   ========================================================= */
+function generateProceduralNormal(size, type) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      let dx = 0, dy = 0;
+      if (type === 'steel') {
+        const rx = x % 64, ry = y % 64;
+        const rivetDist = Math.sqrt((rx - 32) ** 2 + (ry - 32) ** 2);
+        if (rivetDist < 4) {
+          const rd = Math.max(0, 4 - rivetDist);
+          dx += (rx - 32) * rd * 0.15;
+          dy += (ry - 32) * rd * 0.15;
+        }
+        if (Math.abs(y % 128 - 64) < 2) dy += (Math.abs(y % 128 - 64) < 1 ? 0.5 : -0.3);
+        if (Math.abs(x % 256 - 128) < 2) dx += (Math.abs(x % 256 - 128) < 1 ? 0.5 : -0.3);
+        dx += (hash2(x * 0.5, y * 0.5) - 0.5) * 0.15;
+        dy += (hash2(x * 0.5 + 100, y * 0.5 + 100) - 0.5) * 0.15;
+      } else if (type === 'concrete') {
+        dx = (fbm(x * 0.03, y * 0.03, 3) - 0.5) * 0.6;
+        dy = (fbm(x * 0.03 + 50, y * 0.03 + 50, 3) - 0.5) * 0.6;
+        if (y % 128 < 2) dy += 0.4;
+      } else {
+        dx = (hash2(x * 0.3, y * 0.3) - 0.5) * 0.3;
+        dy = (hash2(x * 0.3 + 77, y * 0.3 + 77) - 0.5) * 0.3;
+        dx += (fbm(x * 0.08, y * 0.08, 2) - 0.5) * 0.2;
+        dy += (fbm(x * 0.08 + 33, y * 0.08 + 33, 2) - 0.5) * 0.2;
+      }
+      const len = Math.sqrt(dx * dx + dy * dy + 1);
+      d[i]     = ((dx / len * 0.5 + 0.5) * 255) | 0;
+      d[i + 1] = ((dy / len * 0.5 + 0.5) * 255) | 0;
+      d[i + 2] = ((1 / len * 0.5 + 0.5) * 255) | 0;
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createMaterials() {
+  const steelNorm = generateProceduralNormal(256, 'steel');
+  steelNorm.repeat.set(8, 8);
+  const concreteNorm = generateProceduralNormal(256, 'concrete');
+  concreteNorm.repeat.set(4, 4);
+  const asphaltNorm = generateProceduralNormal(256, 'asphalt');
+  asphaltNorm.repeat.set(6, 12);
+
+  bridgeMat = new THREE.MeshPhysicalMaterial({
+    color: B.color, metalness: 0.45, roughness: 0.45,
+    clearcoat: 0.15, clearcoatRoughness: 0.4, envMapIntensity: 0.9,
+    normalMap: steelNorm, normalScale: new THREE.Vector2(0.4, 0.4)
+  });
+  cableMat = new THREE.MeshStandardMaterial({
+    color: B.color, metalness: 0.6, roughness: 0.35,
+    normalMap: steelNorm, normalScale: new THREE.Vector2(0.2, 0.2)
+  });
+  concreteMat = new THREE.MeshStandardMaterial({
+    color: 0x999088, roughness: 0.85, metalness: 0,
+    normalMap: concreteNorm, normalScale: new THREE.Vector2(0.6, 0.6)
+  });
+  roadMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a, roughness: 0.92, metalness: 0,
+    normalMap: asphaltNorm, normalScale: new THREE.Vector2(0.3, 0.3)
+  });
+}
+
+/* =========================================================
+   SCENE SETUP
+   ========================================================= */
+function initScene() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xc8bfaa, 0.00008);
+
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 80000);
+  camera.position.set(-400, 180, -250);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.8;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  document.body.appendChild(renderer.domElement);
+
+  sceneEnv = new THREE.Scene();
+  pmremGen = new THREE.PMREMGenerator(renderer);
+  pmremGen.compileEquirectangularShader();
+}
+
+/* =========================================================
+   SKY & WATER
+   ========================================================= */
+function createSky() {
+  sky = new Sky();
+  sky.scale.setScalar(50000);
+  const u = sky.material.uniforms;
+  u['turbidity'].value = 6;
+  u['rayleigh'].value = 2.2;
+  u['mieCoefficient'].value = 0.008;
+  u['mieDirectionalG'].value = 0.85;
+  scene.add(sky);
+}
+
+function updateSun(elev, azim) {
+  const phi = THREE.MathUtils.degToRad(90 - elev);
+  const theta = THREE.MathUtils.degToRad(azim);
+  sun.setFromSphericalCoords(1, phi, theta);
+
+  sky.material.uniforms['sunPosition'].value.copy(sun);
+  water.material.uniforms['sunDirection'].value.copy(sun).normalize();
+
+  if (envTarget) envTarget.dispose();
+  sceneEnv.add(sky);
+  envTarget = pmremGen.fromScene(sceneEnv);
+  scene.add(sky);
+  scene.environment = envTarget.texture;
+}
+
+function generateWaterNormals(size = 512) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      // Multi-scale wave normals for realism
+      let dx = 0, dy = 0;
+      const scales = [
+        { s: 0.015, amp: 4.0 },
+        { s: 0.04,  amp: 2.5 },
+        { s: 0.1,   amp: 1.2 },
+        { s: 0.25,  amp: 0.5 },
+      ];
+      for (const { s, amp } of scales) {
+        dx += (fbm((x+1)*s, y*s, 3) - fbm((x-1)*s, y*s, 3)) * amp;
+        dy += (fbm(x*s, (y+1)*s, 3) - fbm(x*s, (y-1)*s, 3)) * amp;
+      }
+      const len = Math.sqrt(dx*dx + dy*dy + 1);
+      d[i]   = ((-dx/len + 1) * 0.5 * 255)|0;
+      d[i+1] = ((-dy/len + 1) * 0.5 * 255)|0;
+      d[i+2] = ((1/len + 1) * 0.5 * 200 + 55)|0;
+      d[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createWater() {
+  const normals = generateWaterNormals(512);
+  const geo = new THREE.PlaneGeometry(30000, 30000);
+  water = new Water(geo, {
+    textureWidth: 512, textureHeight: 512,
+    waterNormals: normals,
+    sunDirection: new THREE.Vector3(),
+    sunColor: 0xfff5e0,
+    waterColor: 0x002030,
+    distortionScale: 6.0,
+    fog: scene.fog !== undefined,
+    alpha: 0.88
+  });
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = -0.5;
+  scene.add(water);
+}
+
+/* =========================================================
+   LIGHTING
+   ========================================================= */
+function createLighting() {
+  const sun = new THREE.DirectionalLight(0xffddbb, 3.0);
+  sun.position.set(-600, 300, -400);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 10;
+  sun.shadow.camera.far = 3000;
+  sun.shadow.camera.left = -1500;
+  sun.shadow.camera.right = 1500;
+  sun.shadow.camera.top = 400;
+  sun.shadow.camera.bottom = -50;
+  sun.shadow.bias = -0.0003;
+  scene.add(sun);
+
+  scene.add(new THREE.HemisphereLight(0x87ceeb, 0x3a5f3a, 0.6));
+  scene.add(new THREE.AmbientLight(0x404050, 0.3));
+}
+
+/* =========================================================
+   BRIDGE - TOWERS
+   ========================================================= */
+function createTower(z) {
+  const g = new THREE.Group();
+  const colSpacing = B.deckW / 2 + 2;
+
+  // Stepped tower column sections
+  const sects = [
+    { y0: -15, h: 82, wf: 1.25, df: 1.25 },  // pier to deck
+    { y0: 67, h: 45, wf: 1.0, df: 1.0 },
+    { y0: 112, h: 45, wf: 0.88, df: 0.88 },
+    { y0: 157, h: 40, wf: 0.78, df: 0.78 },
+    { y0: 197, h: 30, wf: 0.7, df: 0.7 },
+  ];
+  const baseW = 8, baseD = 5.5;
+
+  for (const side of [-1, 1]) {
+    for (const s of sects) {
+      const w = baseW * s.wf, d = baseD * s.df;
+      const geo = new THREE.BoxGeometry(w, s.h, d);
+      const m = new THREE.Mesh(geo, bridgeMat);
+      m.position.set(side * colSpacing, s.y0 + s.h / 2, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+    }
+  }
+
+  // Horizontal braces between columns
+  const braceYs = [67, 112, 157, 197, 225];
+  for (const by of braceYs) {
+    const bw = colSpacing * 2 - baseW * 0.6;
+    const bGeo = new THREE.BoxGeometry(bw, 3.5, baseD * 0.6);
+    const bm = new THREE.Mesh(bGeo, bridgeMat);
+    bm.position.set(0, by, z);
+    bm.castShadow = true;
+    g.add(bm);
+  }
+
+  // Create cellular openings within each column (for realism)
+  for (const side of [-1, 1]) {
+    for (let cy = 72; cy < 220; cy += 22) {
+      const cellW = 3.5, cellH = 16, cellD = 0.3;
+      // Vertical ribs on front face
+      for (const dz of [-1, 1]) {
+        const ribGeo = new THREE.BoxGeometry(0.6, cellH, 0.4);
+        const rib = new THREE.Mesh(ribGeo, bridgeMat);
+        rib.position.set(side * colSpacing, cy + cellH / 2, z + dz * (baseD * 0.5 * 0.85 - 0.2));
+        g.add(rib);
+      }
+    }
+  }
+
+  // Concrete pier base
+  const pierGeo = new THREE.BoxGeometry(colSpacing * 2 + baseW * 1.3, 25, baseD * 2.5);
+  const pier = new THREE.Mesh(pierGeo, concreteMat);
+  pier.position.set(0, -12, z);
+  pier.receiveShadow = true;
+  g.add(pier);
+
+  // Tower cap
+  const capGeo = new THREE.BoxGeometry(baseW * 0.75, 4, baseD * 0.75);
+  for (const side of [-1, 1]) {
+    const cap = new THREE.Mesh(capGeo, bridgeMat);
+    cap.position.set(side * colSpacing, B.towerH + 2, z);
+    g.add(cap);
+  }
+
+  // Cable saddles (where main cables pass over tower tops)
+  const saddleGeo = new THREE.BoxGeometry(3.5, 3, 5);
+  for (const side of [-1, 1]) {
+    const saddle = new THREE.Mesh(saddleGeo, bridgeMat);
+    saddle.position.set(side * colSpacing, B.towerH + 5.5, z);
+    g.add(saddle);
+  }
+
+  // Aviation warning lights (red beacons on tower tops)
+  const avGeo = new THREE.SphereGeometry(0.4, 8, 6);
+  const avMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 4 });
+  for (const side of [-1, 1]) {
+    const avl = new THREE.Mesh(avGeo, avMat);
+    avl.position.set(side * colSpacing, B.towerH + 7.5, z);
+    g.add(avl);
+  }
+
+  return g;
+}
+
+/* =========================================================
+   BRIDGE - DECK
+   ========================================================= */
+function createDeck() {
+  const g = new THREE.Group();
+  const len = B.mainSpan + B.sideSpan * 2;
+  const startZ = -B.sideSpan;
+
+  // Main road surface
+  const deckGeo = new THREE.BoxGeometry(B.deckW, 2.5, len);
+  const deck = new THREE.Mesh(deckGeo, roadMat);
+  deck.position.set(0, B.deckH - 1.25, startZ + len / 2);
+  deck.receiveShadow = true;
+  g.add(deck);
+
+  // Road lane markings (canvas texture on thin plane)
+  const markCanvas = document.createElement('canvas');
+  markCanvas.width = 512; markCanvas.height = 8192;
+  const ctx = markCanvas.getContext('2d');
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, 0, 512, 8192);
+  // Center divider (double yellow)
+  ctx.fillStyle = '#ccaa22';
+  ctx.fillRect(253, 0, 3, 8192);
+  ctx.fillRect(258, 0, 3, 8192);
+  // Lane lines (white dashed)
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (const lx of [170, 213, 298, 341]) {
+    for (let y = 0; y < 8192; y += 80) {
+      ctx.fillRect(lx, y, 2, 40);
+    }
+  }
+  // Edge lines
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillRect(125, 0, 2, 8192);
+  ctx.fillRect(385, 0, 2, 8192);
+
+  const roadTex = new THREE.CanvasTexture(markCanvas);
+  roadTex.wrapS = roadTex.wrapT = THREE.RepeatWrapping;
+  roadTex.repeat.set(1, len / 50);
+  const markGeo = new THREE.PlaneGeometry(B.deckW - 4, len);
+  const markMat = new THREE.MeshStandardMaterial({ map: roadTex, transparent: true, roughness: 0.85, metalness: 0, depthWrite: false });
+  const marks = new THREE.Mesh(markGeo, markMat);
+  marks.rotation.x = -Math.PI / 2;
+  marks.position.set(0, B.deckH + 0.02, startZ + len / 2);
+  g.add(marks);
+
+  // Side trusses
+  const trussH = 7.6, trussThick = 0.3;
+  for (const side of [-1, 1]) {
+    // Top chord
+    const tcGeo = new THREE.BoxGeometry(trussThick, trussThick * 2, len);
+    const tc = new THREE.Mesh(tcGeo, bridgeMat);
+    tc.position.set(side * (B.deckW / 2), B.deckH + trussH, startZ + len / 2);
+    g.add(tc);
+    // Bottom chord
+    const bc = new THREE.Mesh(tcGeo, bridgeMat);
+    bc.position.set(side * (B.deckW / 2), B.deckH - 1, startZ + len / 2);
+    g.add(bc);
+    // Vertical posts
+    for (let pz = startZ; pz <= startZ + len; pz += 7.6) {
+      const vpGeo = new THREE.BoxGeometry(trussThick, trussH + 1, trussThick);
+      const vp = new THREE.Mesh(vpGeo, bridgeMat);
+      vp.position.set(side * (B.deckW / 2), B.deckH + trussH / 2, pz);
+      g.add(vp);
+    }
+    // Diagonal bracing (alternating Warren truss pattern)
+    let diagIdx = 0;
+    for (let pz = startZ; pz < startZ + len - 7.6; pz += 7.6) {
+      const diagLen = Math.sqrt(7.6 * 7.6 + trussH * trussH);
+      const diagGeo = new THREE.BoxGeometry(trussThick * 0.7, diagLen, trussThick * 0.7);
+      const diag = new THREE.Mesh(diagGeo, bridgeMat);
+      diag.position.set(side * (B.deckW / 2), B.deckH + trussH / 2, pz + 3.8);
+      const flip = diagIdx % 2 === 0 ? 1 : -1;
+      diag.rotation.z = flip * Math.atan2(7.6, trussH);
+      g.add(diag);
+      diagIdx++;
+    }
+    // Railing on sidewalk
+    const railGeo = new THREE.BoxGeometry(0.08, 1.2, len);
+    const rail = new THREE.Mesh(railGeo, bridgeMat);
+    rail.position.set(side * (B.deckW / 2 + 1.5), B.deckH + 1.2, startZ + len / 2);
+    g.add(rail);
+  }
+
+  // Sidewalks
+  for (const side of [-1, 1]) {
+    const swGeo = new THREE.BoxGeometry(3, 0.15, len);
+    const swMat = new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.8 });
+    const sw = new THREE.Mesh(swGeo, swMat);
+    sw.position.set(side * (B.deckW / 2 + 1.5), B.deckH + 0.08, startZ + len / 2);
+    g.add(sw);
+  }
+
+  // Under-deck floor beams (transverse, visible from below)
+  const floorBeamGeo = new THREE.BoxGeometry(B.deckW + 2, 1.2, 0.4);
+  const numBeams = Math.floor(len / 7.6);
+  const floorBeamMesh = new THREE.InstancedMesh(floorBeamGeo, bridgeMat, numBeams);
+  const _bm4 = new THREE.Matrix4();
+  for (let i = 0; i < numBeams; i++) {
+    _bm4.makeTranslation(0, B.deckH - 2.8, startZ + i * 7.6);
+    floorBeamMesh.setMatrixAt(i, _bm4);
+  }
+  floorBeamMesh.castShadow = true;
+  g.add(floorBeamMesh);
+
+  // Under-deck longitudinal stringers (2 parallel beams along span)
+  for (const sx of [-B.deckW / 3, B.deckW / 3]) {
+    const strGeo = new THREE.BoxGeometry(0.5, 0.8, len);
+    const str = new THREE.Mesh(strGeo, bridgeMat);
+    str.position.set(sx, B.deckH - 3.5, startZ + len / 2);
+    g.add(str);
+  }
+
+  // Street light poles (art deco style, every ~50m)
+  const poleGeo = new THREE.CylinderGeometry(0.06, 0.09, 4.5, 6);
+  poleGeo.translate(0, 2.25, 0);
+  const armGeo = new THREE.BoxGeometry(0.8, 0.06, 0.06);
+  armGeo.translate(0.4, 4.6, 0);
+  const poleFullGeo = mergeGeometries([poleGeo, armGeo]);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.7, roughness: 0.35 });
+  const lanternGeo = new THREE.BoxGeometry(0.25, 0.4, 0.25);
+  const lanternMat = new THREE.MeshStandardMaterial({
+    color: 0xffeecc, emissive: 0xffaa44, emissiveIntensity: 1.5, roughness: 0.3
+  });
+  const lightSpacing = 50;
+  const numLights = Math.floor(len / lightSpacing);
+  for (const side of [-1, 1]) {
+    const poleMesh = new THREE.InstancedMesh(poleFullGeo, poleMat, numLights);
+    const lantMesh = new THREE.InstancedMesh(lanternGeo, lanternMat, numLights);
+    const _lm4 = new THREE.Matrix4();
+    const _ls = new THREE.Vector3(side, 1, 1);
+    for (let i = 0; i < numLights; i++) {
+      const lz = startZ + i * lightSpacing + lightSpacing / 2;
+      _lm4.makeTranslation(side * (B.deckW / 2 + 0.8), B.deckH, lz);
+      _lm4.scale(_ls);
+      poleMesh.setMatrixAt(i, _lm4);
+      _lm4.makeTranslation(side * (B.deckW / 2 + 0.8 + 0.8), B.deckH + 4.55, lz);
+      lantMesh.setMatrixAt(i, _lm4);
+    }
+    g.add(poleMesh, lantMesh);
+  }
+
+  return g;
+}
+
+/* =========================================================
+   BRIDGE - MAIN CABLES
+   ========================================================= */
+function createMainCables() {
+  const g = new THREE.Group();
+  const cableOffset = B.deckW / 2 + 2; // align with tower leg spacing
+
+  for (const side of [-1, 1]) {
+    const x = side * cableOffset;
+    const pts = [];
+
+    // South anchor cable: anchorage top down to side span start
+    const ancTopY = 32.5; // anchorage block top (y=15 center + 35/2 height)
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const z = THREE.MathUtils.lerp(-B.sideSpan - 30, -B.sideSpan, t);
+      const y = THREE.MathUtils.lerp(ancTopY, 50, t);
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+
+    // South side span: anchor to south tower
+    for (let i = 1; i <= 40; i++) {
+      const t = i / 40;
+      const z = -B.sideSpan + t * B.sideSpan;
+      const y0 = 50, y1 = B.towerH;
+      const sag = -30 * Math.sin(Math.PI * t);
+      const y = THREE.MathUtils.lerp(y0, y1, t) + sag;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+
+    // Main span: south tower to north tower (parabolic)
+    for (let i = 0; i <= 100; i++) {
+      const t = i / 100;
+      const z = t * B.mainSpan;
+      const y = B.cableSag + (B.towerH - B.cableSag) * Math.pow(2 * t - 1, 2);
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+
+    // North side span: north tower to anchor
+    for (let i = 0; i < 40; i++) {
+      const t = i / 40;
+      const z = B.mainSpan + t * B.sideSpan;
+      const y0 = B.towerH, y1 = 50;
+      const sag = -30 * Math.sin(Math.PI * t);
+      const y = THREE.MathUtils.lerp(y0, y1, t) + sag;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+
+    // North anchor cable: side span end down to anchorage top
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const z = THREE.MathUtils.lerp(B.mainSpan + B.sideSpan, B.mainSpan + B.sideSpan + 30, t);
+      const y = THREE.MathUtils.lerp(50, ancTopY, t);
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tubeGeo = new THREE.TubeGeometry(curve, 200, B.cableR, 8, false);
+    const tube = new THREE.Mesh(tubeGeo, cableMat);
+    tube.castShadow = true;
+    g.add(tube);
+  }
+
+  return g;
+}
+
+/* =========================================================
+   BRIDGE - SUSPENDER CABLES
+   ========================================================= */
+function createSuspenders() {
+  const g = new THREE.Group();
+  const cableOffset = B.deckW / 2 + 2; // align with tower leg spacing
+  const suspGeo = new THREE.CylinderGeometry(0.04, 0.04, 1, 4);
+
+  for (const side of [-1, 1]) {
+    const x = side * cableOffset;
+    // Main span suspenders
+    const n = Math.floor(B.mainSpan / B.suspSpacing);
+    for (let i = 1; i < n; i++) {
+      const t = i / n;
+      const z = t * B.mainSpan;
+      const cableY = B.cableSag + (B.towerH - B.cableSag) * Math.pow(2 * t - 1, 2);
+      const h = cableY - B.deckH - 2;
+      if (h < 2) continue;
+      const sg = suspGeo.clone();
+      sg.scale(1, h, 1);
+      const m = new THREE.Mesh(sg, cableMat);
+      m.position.set(x, B.deckH + 2 + h / 2, z);
+      g.add(m);
+    }
+    // Side span suspenders
+    for (const spanStart of [-B.sideSpan, B.mainSpan]) {
+      const spanLen = B.sideSpan;
+      const ns = Math.floor(spanLen / B.suspSpacing);
+      for (let i = 1; i < ns; i++) {
+        const t = i / ns;
+        const z = spanStart + t * spanLen;
+        let cableY;
+        if (spanStart < 0) {
+          const sag = -30 * Math.sin(Math.PI * t);
+          cableY = THREE.MathUtils.lerp(50, B.towerH, t) + sag;
+        } else {
+          const sag = -30 * Math.sin(Math.PI * t);
+          cableY = THREE.MathUtils.lerp(B.towerH, 50, t) + sag;
+        }
+        const h = cableY - B.deckH - 2;
+        if (h < 2) continue;
+        const sg = suspGeo.clone();
+        sg.scale(1, h, 1);
+        const m = new THREE.Mesh(sg, cableMat);
+        m.position.set(x, B.deckH + 2 + h / 2, z);
+        g.add(m);
+      }
+    }
+  }
+  return g;
+}
+
+/* =========================================================
+   BRIDGE ASSEMBLY
+   ========================================================= */
+function createBridge() {
+  const bridge = new THREE.Group();
+  bridge.add(createTower(0));
+  bridge.add(createTower(B.mainSpan));
+  bridge.add(createDeck());
+  bridge.add(createMainCables());
+  bridge.add(createSuspenders());
+
+  // Anchorage blocks
+  for (const z of [-B.sideSpan - 30, B.mainSpan + B.sideSpan + 30]) {
+    const ancGeo = new THREE.BoxGeometry(40, 35, 50);
+    const anc = new THREE.Mesh(ancGeo, concreteMat);
+    anc.position.set(0, 15, z);
+    anc.receiveShadow = true;
+    bridge.add(anc);
+  }
+
+  // Fort Point arch (south end)
+  const archGeo = new THREE.TorusGeometry(20, 3, 8, 16, Math.PI);
+  const arch = new THREE.Mesh(archGeo, concreteMat);
+  arch.position.set(0, B.deckH - 20, -B.sideSpan + 50);
+  arch.rotation.y = Math.PI / 2;
+  bridge.add(arch);
+
+  // Approach roads extending from anchorages
+  for (const [az, dir] of [[-B.sideSpan - 55, -1], [B.mainSpan + B.sideSpan + 55, 1]]) {
+    // Road surface
+    const apGeo = new THREE.BoxGeometry(B.deckW, 2, 200);
+    const ap = new THREE.Mesh(apGeo, roadMat);
+    ap.position.set(0, B.deckH - 2 + dir * -8, az + dir * 100);
+    ap.rotation.x = dir * 0.04; // slight slope
+    ap.receiveShadow = true;
+    bridge.add(ap);
+    // Guard rails
+    for (const sx of [-1, 1]) {
+      const grGeo = new THREE.BoxGeometry(0.15, 1.0, 200);
+      const gr = new THREE.Mesh(grGeo, bridgeMat);
+      gr.position.set(sx * (B.deckW / 2 + 0.5), B.deckH - 1 + dir * -8, az + dir * 100);
+      gr.rotation.x = dir * 0.04;
+      bridge.add(gr);
+    }
+    // Embankment under approach road to connect to terrain
+    const embH = B.deckH - 2 + dir * -8; // road height
+    const embGeo = new THREE.BufferGeometry();
+    const hw = B.deckW / 2 + 2; // half-width with slope
+    const ez0 = az; // near end (bridge side)
+    const ez1 = az + dir * 200; // far end
+    const verts = new Float32Array([
+      // Bridge-side face (near)
+      -hw, 0, ez0,   hw, 0, ez0,   hw, embH, ez0,
+      -hw, 0, ez0,   hw, embH, ez0, -hw, embH, ez0,
+      // Far face
+      -hw, 0, ez1,   hw, embH - dir * 16, ez1,  hw, 0, ez1,
+      -hw, 0, ez1,   -hw, embH - dir * 16, ez1,  hw, embH - dir * 16, ez1,
+      // Top face (follows road slope)
+      -hw, embH, ez0,  hw, embH, ez0,  hw, embH - dir * 16, ez1,
+      -hw, embH, ez0,  hw, embH - dir * 16, ez1, -hw, embH - dir * 16, ez1,
+      // Left side
+      -hw, 0, ez0,  -hw, embH, ez0,  -hw, embH - dir * 16, ez1,
+      -hw, 0, ez0,  -hw, embH - dir * 16, ez1,  -hw, 0, ez1,
+      // Right side
+      hw, 0, ez0,  hw, embH - dir * 16, ez1,  hw, embH, ez0,
+      hw, 0, ez0,  hw, 0, ez1,  hw, embH - dir * 16, ez1,
+    ]);
+    embGeo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    embGeo.computeVertexNormals();
+    const emb = new THREE.Mesh(embGeo, concreteMat);
+    emb.receiveShadow = true;
+    bridge.add(emb);
+  }
+
+  // Foam/wake rings around pier bases at water level
+  const foamGeo = new THREE.RingGeometry(16, 26, 16);
+  foamGeo.rotateX(-Math.PI / 2);
+  const foamMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.18,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+  for (const tz of [0, B.mainSpan]) {
+    const foam = new THREE.Mesh(foamGeo, foamMat);
+    foam.position.set(0, 0.4, tz);
+    foam.scale.set(1.2, 1, 0.5);
+    bridge.add(foam);
+  }
+
+  scene.add(bridge);
+}
+
+/* =========================================================
+   TERRAIN
+   ========================================================= */
+function terrainH(wx, wz) {
+  let h = -30;
+  // Marin Headlands (north) - steep coastal hills
+  if (wz > 1500) {
+    const d = (wz - 1500) / 600;
+    const ridge = fbm(wx * 0.0012 + 3.7, wz * 0.0012 + 1.2, 6);
+    const coastal = Math.max(0, 1 - Math.abs(wx) / 1500);
+    h = Math.max(h, 300 * Math.min(d, 1.5) * (0.25 + 0.75 * ridge) * Math.exp(-d * 0.25) * coastal);
+  }
+  // Presidio / south-west
+  if (wz < -200 && wx < 600) {
+    const d = Math.min((-200 - wz) / 500, 1);
+    const e = Math.min((600 - wx) / 700, 1);
+    const n = fbm(wx * 0.003 + 9.1, wz * 0.003 + 4.3, 5);
+    h = Math.max(h, 80 * d * e * (0.3 + 0.7 * n));
+  }
+  // SF hills (far south)
+  if (wz < -800) {
+    const d = Math.min((-800 - wz) / 700, 1);
+    h = Math.max(h, 140 * d * (0.35 + 0.65 * fbm(wx * 0.002 + 5.5, wz * 0.002 + 8.8, 5)));
+  }
+  // West coast cliffs
+  if (wx < -200) {
+    const d = Math.min((-200 - wx) / 400, 1);
+    const coastal = fbm(wx * 0.002 + 2.2, wz * 0.002 + 6.6, 5);
+    h = Math.max(h, 100 * d * (0.25 + 0.75 * coastal));
+  }
+  // East coast (Sausalito area)
+  if (wx > 500 && wz > 1400) {
+    const d = Math.min((wx - 500) / 500, 1) * Math.min((wz - 1400) / 400, 1);
+    h = Math.max(h, 90 * d * (0.35 + 0.65 * fbm(wx * 0.003, wz * 0.003, 4)));
+  }
+  // Keep bridge corridor clear (smooth falloff)
+  if (wz > -600 && wz < 1900 && Math.abs(wx) < 120) {
+    const bridgeFade = Math.max(0, 1 - Math.abs(wx) / 120);
+    // Gradual transition at bridge ends so terrain rises naturally
+    let endFade = 1;
+    if (wz < -200) endFade = 1 - (wz + 200) / (-400); // fade from -200 to -600
+    else if (wz > 1500) endFade = 1 - (wz - 1500) / 400; // fade from 1500 to 1900
+    h = Math.min(h, THREE.MathUtils.lerp(h, -5, bridgeFade * Math.min(endFade, 1)));
+  }
+  return h;
+}
+
+function createTerrain() {
+  const g = new THREE.Group();
+  const patches = [
+    { cx: 0, cz: 2800, w: 4000, d: 2500, seg: 140 },   // Marin Headlands
+    { cx: -300, cz: -800, w: 2500, d: 1200, seg: 90 },   // Presidio
+    { cx: 200, cz: -1800, w: 3000, d: 1500, seg: 90 },   // SF
+    { cx: -800, cz: 600, w: 1200, d: 3000, seg: 70 },    // West coast
+    { cx: 1000, cz: 2200, w: 1200, d: 1500, seg: 60 },   // Sausalito
+  ];
+
+  for (const p of patches) {
+    const geo = new THREE.PlaneGeometry(p.w, p.d, p.seg, p.seg);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+
+    for (let i = 0; i < pos.count; i++) {
+      const lx = pos.getX(i), lz = pos.getZ(i);
+      const wx = lx + p.cx, wz = lz + p.cz;
+      const h = terrainH(wx, wz);
+      pos.setY(i, h);
+    }
+    geo.computeVertexNormals();
+
+    // Color based on height, slope, and noise for realistic vegetation
+    const norms = geo.attributes.normal;
+    for (let i = 0; i < pos.count; i++) {
+      const lx = pos.getX(i), lz = pos.getZ(i);
+      const wx = lx + p.cx, wz = lz + p.cz;
+      const h = pos.getY(i);
+      const ny = norms.getY(i); // slope: 1=flat, 0=vertical
+      const slope = 1 - ny;
+
+      const n1 = fbm(wx * 0.004 + 1.1, wz * 0.004 + 2.2, 3);
+      const n2 = fbm(wx * 0.015, wz * 0.015, 2);
+      const elev = Math.max(0, h) / 250;
+
+      let r, g2, b;
+      if (h < 1) {
+        // Shoreline / sand / rock
+        r = 0.52 + n2 * 0.1; g2 = 0.46 + n2 * 0.07; b = 0.35 + n2 * 0.06;
+      } else if (slope > 0.5) {
+        // Steep rocky cliff face
+        r = 0.45 + n1 * 0.1; g2 = 0.38 + n1 * 0.08; b = 0.30 + n1 * 0.06;
+      } else if (elev > 0.55) {
+        // High - dry golden chaparral
+        r = 0.52 + n1 * 0.1; g2 = 0.44 + n1 * 0.06; b = 0.20 + n1 * 0.04;
+      } else if (elev > 0.25) {
+        // Mid - California golden-green grassland mix
+        const blend = n1 * 0.6 + 0.4;
+        r = THREE.MathUtils.lerp(0.30, 0.50, blend);
+        g2 = THREE.MathUtils.lerp(0.40, 0.42, blend);
+        b = THREE.MathUtils.lerp(0.15, 0.18, blend);
+      } else {
+        // Low - greener near water (irrigated / coastal scrub)
+        const greenPatch = fbm(wx * 0.008 + 3.3, wz * 0.008 + 7.7, 2);
+        r = 0.28 + n1 * 0.12 + greenPatch * 0.08;
+        g2 = 0.38 + n1 * 0.06 + greenPatch * 0.06;
+        b = 0.15 + n1 * 0.04;
+      }
+      // Darken valleys slightly
+      const ao = 0.85 + 0.15 * ny;
+      colors[i * 3] = r * ao;
+      colors[i * 3 + 1] = g2 * ao;
+      colors[i * 3 + 2] = b * ao;
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(p.cx, 0, p.cz);
+    mesh.receiveShadow = true;
+    g.add(mesh);
+  }
+
+  // Tree clusters with layered foliage (spheres instead of cones)
+  const treeTrunkGeo = new THREE.CylinderGeometry(0.25, 0.45, 5, 5);
+  treeTrunkGeo.translate(0, 2.5, 0); // anchor base at y=0 so trunk sits on terrain
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.9 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2d5a1e, roughness: 0.85 });
+  // Layered foliage: 3 stacked spheres + 3 offset clusters
+  const foliageParts = [];
+  for (const [fy, fr] of [[5, 3.0], [6.8, 2.4], [8.2, 1.6]]) {
+    const s = new THREE.SphereGeometry(fr, 6, 5);
+    s.translate(0, fy, 0);
+    foliageParts.push(s);
+  }
+  for (let a = 0; a < 3; a++) {
+    const angle = a * Math.PI * 2 / 3;
+    const s = new THREE.SphereGeometry(1.8, 5, 4);
+    s.translate(Math.cos(angle) * 1.5, 5.5, Math.sin(angle) * 1.5);
+    foliageParts.push(s);
+  }
+  const foliageGeo = mergeGeometries(foliageParts);
+
+  const NUM_TREES = 300;
+  const treeTrunkMesh = new THREE.InstancedMesh(treeTrunkGeo, trunkMat, NUM_TREES);
+  const treeTopMesh = new THREE.InstancedMesh(foliageGeo, leafMat, NUM_TREES);
+  const tmpM = new THREE.Matrix4();
+  const tmpS = new THREE.Vector3();
+  let treeIdx = 0;
+  const rng = (s) => { let x = Math.sin(s) * 43758.5453; return x - Math.floor(x); };
+
+  for (let i = 0; i < NUM_TREES * 3 && treeIdx < NUM_TREES; i++) {
+    const wx = -1500 + rng(i * 7.3) * 4000;
+    const wz = -2000 + rng(i * 11.1) * 5000;
+    const h = terrainH(wx, wz);
+    if (h < 5 || h > 180) continue;
+    if (wz > -400 && wz < 1700 && Math.abs(wx) < 150) continue;
+    const scale = 0.6 + rng(i * 3.7) * 0.8;
+    const sy = 0.8 + rng(i * 13.3) * 0.5;
+    const sx = 0.9 + rng(i * 9.7) * 0.25;
+    tmpS.set(scale * sx, scale * sy, scale * sx);
+    tmpM.makeTranslation(wx, h, wz);
+    tmpM.scale(tmpS);
+    treeTrunkMesh.setMatrixAt(treeIdx, tmpM);
+    treeTopMesh.setMatrixAt(treeIdx, tmpM);
+    treeTopMesh.setColorAt(treeIdx, new THREE.Color().setHSL(0.28 + rng(i * 5.1) * 0.08, 0.5, 0.18 + rng(i * 2.3) * 0.12));
+    treeIdx++;
+  }
+  treeTrunkMesh.count = treeIdx;
+  treeTopMesh.count = treeIdx;
+  treeTrunkMesh.castShadow = true;
+  treeTopMesh.castShadow = true;
+  if (treeIdx > 0 && treeTopMesh.instanceColor) treeTopMesh.instanceColor.needsUpdate = true;
+  g.add(treeTrunkMesh);
+  g.add(treeTopMesh);
+
+  scene.add(g);
+}
+
+/* =========================================================
+   CITYSCAPE (distant SF skyline)
+   ========================================================= */
+function createCityscape() {
+  const g = new THREE.Group();
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x556677, metalness: 0.8, roughness: 0.15, envMapIntensity: 1.2 });
+  const buildMat = new THREE.MeshStandardMaterial({ color: 0x667788, roughness: 0.6, metalness: 0.3 });
+
+  // Downtown SF cluster (southeast)
+  const rng = (s) => { let x = Math.sin(s) * 43758.5453; return x - Math.floor(x); };
+  for (let i = 0; i < 60; i++) {
+    const bx = 800 + rng(i * 7.1) * 1500;
+    const bz = -1500 - rng(i * 3.3) * 1200;
+    const bh = 30 + rng(i * 11.7) * 200;
+    const bw = 15 + rng(i * 5.9) * 30;
+    const bd = 15 + rng(i * 9.1) * 30;
+    const geo = new THREE.BoxGeometry(bw, bh, bd);
+    const mat = rng(i * 2.1) > 0.5 ? glassMat : buildMat;
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(bx, bh / 2, bz);
+    m.castShadow = true;
+    g.add(m);
+  }
+
+  // Alcatraz Island (east) - improved with landmark details
+  const alcRockMat = new THREE.MeshStandardMaterial({ color: 0x8a7d6b, roughness: 0.9 });
+  const alcWallMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.8 });
+  // Island base (layered for natural shape)
+  const alcBase = new THREE.Mesh(new THREE.CylinderGeometry(55, 65, 18, 8), alcRockMat);
+  alcBase.position.set(1200, 4, 400);
+  alcBase.scale.set(1.1, 1, 0.7);
+  g.add(alcBase);
+  const alcTop = new THREE.Mesh(new THREE.CylinderGeometry(45, 55, 8, 8), alcRockMat);
+  alcTop.position.set(1200, 15, 400);
+  alcTop.scale.set(1.1, 1, 0.7);
+  g.add(alcTop);
+  // Main cellhouse (long rectangular building)
+  const cellhouse = new THREE.Mesh(new THREE.BoxGeometry(80, 12, 18), alcWallMat);
+  cellhouse.position.set(1200, 25, 400);
+  g.add(cellhouse);
+  // Cellhouse roof
+  const roofGeo = new THREE.BoxGeometry(82, 1.5, 20);
+  const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.7 }));
+  roof.position.set(1200, 31.5, 400);
+  g.add(roof);
+  // Lighthouse tower
+  const lhTower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 20, 8), alcWallMat);
+  lhTower.position.set(1200, 29, 385);
+  g.add(lhTower);
+  const lhLamp = new THREE.Mesh(new THREE.CylinderGeometry(3, 2.5, 4, 8),
+    new THREE.MeshStandardMaterial({ color: 0xccddee, emissive: 0xffffaa, emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.3 }));
+  lhLamp.position.set(1200, 41, 385);
+  g.add(lhLamp);
+  const lhCap = new THREE.Mesh(new THREE.ConeGeometry(3.5, 3, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5 }));
+  lhCap.position.set(1200, 44, 385);
+  g.add(lhCap);
+  // Water tower
+  const wt = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 15, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.6, metalness: 0.3 }));
+  wt.position.set(1225, 26, 410);
+  g.add(wt);
+
+  // Boats with shaped hulls and cabin detail
+  const boatPositions = [
+    [300, 0, 800], [500, 0, 500], [-200, 0, 900], [700, 0, 300],
+    [900, 0, 650], [-100, 0, 1200], [400, 0, 1100], [150, 0, 400],
+  ];
+  const boatGroups = [];
+  for (const bp of boatPositions) {
+    const bg = new THREE.Group();
+    // Hull: lathe profile (tapered bow/stern)
+    const hullPts = [];
+    for (let j = 0; j <= 12; j++) {
+      const t = j / 12;
+      const r = Math.sin(t * Math.PI) * 2.5 + 0.2;
+      hullPts.push(new THREE.Vector2(r, t * 14 - 7));
+    }
+    const hullGeo = new THREE.LatheGeometry(hullPts, 8);
+    hullGeo.rotateX(Math.PI / 2);
+    hullGeo.scale(1, 0.35, 1);
+    const hull = new THREE.Mesh(hullGeo, new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.35, metalness: 0.2 }));
+    hull.position.y = 0.5;
+    bg.add(hull);
+    // Deck
+    const deckG = new THREE.BoxGeometry(4.2, 0.15, 12);
+    const deck = new THREE.Mesh(deckG, new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 }));
+    deck.position.y = 1.2;
+    bg.add(deck);
+    // Cabin
+    const cabG = new THREE.BoxGeometry(2.8, 2.2, 4);
+    const cab = new THREE.Mesh(cabG, new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.4 }));
+    cab.position.set(0, 2.4, -1);
+    bg.add(cab);
+    // Cabin roof
+    const roofG = new THREE.BoxGeometry(3.2, 0.12, 4.5);
+    const roof = new THREE.Mesh(roofG, new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 }));
+    roof.position.set(0, 3.55, -1);
+    bg.add(roof);
+    // Windows
+    const winMat = new THREE.MeshStandardMaterial({ color: 0x88bbdd, emissive: 0x224466, emissiveIntensity: 0.3 });
+    for (const side of [-1, 1]) {
+      for (let wz = -2.5; wz <= 0.5; wz += 1.0) {
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.9), winMat);
+        win.position.set(side * 1.41, 2.5, wz);
+        win.rotation.y = side * Math.PI / 2;
+        bg.add(win);
+      }
+    }
+    // Mast
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 4, 4),
+      new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 }));
+    mast.position.set(0, 5.5, -1);
+    bg.add(mast);
+
+    bg.position.set(bp[0], bp[1], bp[2]);
+    bg.rotation.y = Math.random() * Math.PI;
+    bg.userData.phase = Math.random() * Math.PI * 2;
+    boatGroups.push(bg);
+    g.add(bg);
+  }
+  window._boatGroups = boatGroups;
+
+  // Fog bank on the Pacific (west side) - large translucent volumes, animated
+  const fogMat = new THREE.MeshStandardMaterial({
+    color: 0xddd8cc, transparent: true, opacity: 0.15,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+  const fogMeshes = [];
+  for (let i = 0; i < 8; i++) {
+    const fg = new THREE.Mesh(new THREE.SphereGeometry(200 + Math.random() * 300, 8, 6), fogMat);
+    fg.position.set(-1500 - Math.random() * 2000, 30 + Math.random() * 100, -500 + Math.random() * 3000);
+    fg.scale.set(1, 0.3, 1);
+    fg.userData.baseX = fg.position.x;
+    fg.userData.baseZ = fg.position.z;
+    fg.userData.driftSpeed = 0.3 + Math.random() * 0.5;
+    fg.userData.phase = Math.random() * Math.PI * 2;
+    fogMeshes.push(fg);
+    g.add(fg);
+  }
+  window._fogMeshes = fogMeshes;
+
+  scene.add(g);
+}
+
+/* =========================================================
+   TRAFFIC
+   ========================================================= */
+const cars = [];
+const NUM_CARS = 80;
+let carBodyMesh, carWheelMesh, carLightMesh, carHeadMesh;
+
+function createTraffic() {
+  // Sedan side profile (extruded for 3D shape)
+  const shape = new THREE.Shape();
+  shape.moveTo(-2.1, 0.12);
+  shape.lineTo(2.1, 0.12);
+  shape.lineTo(2.15, 0.4);
+  shape.lineTo(1.7, 0.58);
+  shape.lineTo(0.8, 1.08);
+  shape.lineTo(-0.3, 1.08);
+  shape.lineTo(-0.9, 0.62);
+  shape.lineTo(-1.6, 0.52);
+  shape.lineTo(-2.15, 0.38);
+  shape.closePath();
+  const bodyGeo = new THREE.ExtrudeGeometry(shape, {
+    depth: 1.85, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 1
+  });
+  bodyGeo.translate(0, 0, -0.925);
+  bodyGeo.rotateY(Math.PI / 2); // car length along Z
+
+  const bodyMat = new THREE.MeshStandardMaterial({ roughness: 0.25, metalness: 0.75 });
+  carBodyMesh = new THREE.InstancedMesh(bodyGeo, bodyMat, NUM_CARS);
+  carBodyMesh.castShadow = true;
+
+  // Wheels (4 per car, merged into single geometry)
+  const wheelR = 0.28, wheelW = 0.16;
+  const singleWheel = new THREE.CylinderGeometry(wheelR, wheelR, wheelW, 8);
+  singleWheel.rotateZ(Math.PI / 2);
+  const wheelPositions = [
+    [-0.88, wheelR + 0.02, 1.15], [0.88, wheelR + 0.02, 1.15],
+    [-0.88, wheelR + 0.02, -1.15], [0.88, wheelR + 0.02, -1.15]
+  ];
+  const wheelParts = wheelPositions.map(([x, y, z]) => {
+    const w = singleWheel.clone(); w.translate(x, y, z); return w;
+  });
+  // Hubcaps (lighter center)
+  const hubGeo = new THREE.CylinderGeometry(wheelR * 0.55, wheelR * 0.55, wheelW + 0.01, 6);
+  hubGeo.rotateZ(Math.PI / 2);
+  for (const [x, y, z] of wheelPositions) {
+    const h = hubGeo.clone(); h.translate(x, y, z); wheelParts.push(h);
+  }
+  const wheelSetGeo = mergeGeometries(wheelParts);
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.15 });
+  carWheelMesh = new THREE.InstancedMesh(wheelSetGeo, wheelMat, NUM_CARS);
+
+  // Lights
+  const lightGeo = new THREE.BoxGeometry(1.5, 0.18, 0.12);
+  const tailMat = new THREE.MeshStandardMaterial({ emissive: 0xff3300, emissiveIntensity: 3.5, color: 0xff3300 });
+  const headMat = new THREE.MeshStandardMaterial({ emissive: 0xffffcc, emissiveIntensity: 3.0, color: 0xffffcc });
+  carLightMesh = new THREE.InstancedMesh(lightGeo, tailMat, NUM_CARS);
+  carHeadMesh = new THREE.InstancedMesh(lightGeo, headMat, NUM_CARS);
+
+  const bridgeStart = -B.sideSpan + 20;
+  const bridgeEnd = B.mainSpan + B.sideSpan - 20;
+  const bridgeLen = bridgeEnd - bridgeStart;
+
+  for (let i = 0; i < NUM_CARS; i++) {
+    const dir = i < NUM_CARS / 2 ? 1 : -1;
+    const laneIdx = dir > 0 ? Math.floor(Math.random() * 3) + 3 : Math.floor(Math.random() * 3);
+    const laneX = LANES[laneIdx];
+    const z = bridgeStart + Math.random() * bridgeLen;
+    const speed = (18 + Math.random() * 6) * dir;
+    const colorIdx = Math.floor(Math.random() * CAR_COLORS.length);
+    // Size variation: SUV-like (taller/wider) vs compact
+    const scaleX = 0.9 + Math.random() * 0.25;
+    const scaleY = 0.85 + Math.random() * 0.4;
+    cars.push({ z, x: laneX, speed, dir, colorIdx, laneIdx, scaleX, scaleY });
+    carBodyMesh.setColorAt(i, new THREE.Color(CAR_COLORS[colorIdx]));
+  }
+  carBodyMesh.instanceColor.needsUpdate = true;
+
+  scene.add(carBodyMesh, carWheelMesh, carLightMesh, carHeadMesh);
+  updateCarMatrices();
+}
+
+const _carMat = new THREE.Matrix4();
+const _carPos = new THREE.Vector3();
+const _carScale = new THREE.Vector3(1, 1, 1);
+const _qId = new THREE.Quaternion();
+const _qFlip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+
+function updateCarMatrices() {
+  for (let i = 0; i < NUM_CARS; i++) {
+    const c = cars[i];
+    const y = B.deckH + 0.01;
+    const q = c.dir > 0 ? _qId : _qFlip;
+
+    // Body (with size variation)
+    _carPos.set(c.x, y, c.z);
+    _carScale.set(c.scaleX, c.scaleY, 1);
+    _carMat.compose(_carPos, q, _carScale);
+    carBodyMesh.setMatrixAt(i, _carMat);
+
+    // Wheels (no Y scaling)
+    _carScale.set(c.scaleX, 1, 1);
+    _carMat.compose(_carPos, q, _carScale);
+    carWheelMesh.setMatrixAt(i, _carMat);
+
+    // Tail lights
+    _carScale.set(1, 1, 1);
+    _carPos.set(c.x, y + 0.32 * c.scaleY, c.z - 2.1 * c.dir);
+    _carMat.compose(_carPos, _qId, _carScale);
+    carLightMesh.setMatrixAt(i, _carMat);
+
+    // Headlights
+    _carPos.set(c.x, y + 0.32 * c.scaleY, c.z + 2.1 * c.dir);
+    _carMat.compose(_carPos, _qId, _carScale);
+    carHeadMesh.setMatrixAt(i, _carMat);
+  }
+  carBodyMesh.instanceMatrix.needsUpdate = true;
+  carWheelMesh.instanceMatrix.needsUpdate = true;
+  carLightMesh.instanceMatrix.needsUpdate = true;
+  carHeadMesh.instanceMatrix.needsUpdate = true;
+}
+
+function updateTraffic(delta) {
+  const bridgeStart = -B.sideSpan + 20;
+  const bridgeEnd = B.mainSpan + B.sideSpan - 20;
+  const bridgeLen = bridgeEnd - bridgeStart;
+
+  for (const c of cars) {
+    c.z += c.speed * delta;
+    if (c.dir > 0 && c.z > bridgeEnd) c.z = bridgeStart;
+    if (c.dir < 0 && c.z < bridgeStart) c.z = bridgeEnd;
+  }
+  updateCarMatrices();
+}
+
+/* =========================================================
+   FLIGHT CONTROLS
+   ========================================================= */
+const ctrl = {
+  fwd: false, back: false, left: false, right: false,
+  up: false, down: false, boost: false,
+  speed: 50,
+  euler: new THREE.Euler(0, 0, 0, 'YXZ'),
+  vel: new THREE.Vector3(),
+  sens: 0.002,
+  damping: 0.90,
+  locked: false
+};
+
+let autoFly = true;
+let autoAngle = -0.3;
+
+function setupControls() {
+  // Initial look direction
+  ctrl.euler.set(-0.15, 2.3, 0);
+  camera.quaternion.setFromEuler(ctrl.euler);
+
+  renderer.domElement.addEventListener('click', () => {
+    if (!ctrl.locked) renderer.domElement.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    ctrl.locked = document.pointerLockElement === renderer.domElement;
+    document.getElementById('overlay').style.opacity = ctrl.locked ? '0' : '1';
+    document.getElementById('overlay').style.pointerEvents = ctrl.locked ? 'none' : 'auto';
+    document.getElementById('hud').style.opacity = ctrl.locked ? '1' : '0';
+    if (ctrl.locked) autoFly = false;
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!ctrl.locked) return;
+    ctrl.euler.y -= e.movementX * ctrl.sens;
+    ctrl.euler.x -= e.movementY * ctrl.sens;
+    ctrl.euler.x = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, ctrl.euler.x));
+    camera.quaternion.setFromEuler(ctrl.euler);
+  });
+
+  const keyMap = {
+    KeyW: 'fwd', KeyS: 'back', KeyA: 'left', KeyD: 'right',
+    Space: 'up', KeyQ: 'down', ShiftLeft: 'boost', ShiftRight: 'boost'
+  };
+
+  document.addEventListener('keydown', e => {
+    if (keyMap[e.code]) { ctrl[keyMap[e.code]] = true; e.preventDefault(); }
+    if (e.code === 'KeyF') toggleFog();
+    if (e.code >= 'Digit1' && e.code <= 'Digit6') goToViewpoint(+e.code.slice(5));
+  });
+  document.addEventListener('keyup', e => {
+    if (keyMap[e.code]) ctrl[keyMap[e.code]] = false;
+  });
+
+  document.addEventListener('wheel', e => {
+    ctrl.speed *= e.deltaY > 0 ? 0.92 : 1.08;
+    ctrl.speed = THREE.MathUtils.clamp(ctrl.speed, 5, 500);
+  }, { passive: true });
+}
+
+function updateControls(dt) {
+  if (autoFly) {
+    autoAngle += dt * 0.03;
+    const r = 700 + 200 * Math.sin(autoAngle * 0.2);
+    const h = 160 + 60 * Math.sin(autoAngle * 0.15);
+    camera.position.set(Math.sin(autoAngle) * r, h, 640 + Math.cos(autoAngle) * r);
+    camera.lookAt(0, 80, 640);
+    ctrl.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    return;
+  }
+
+  if (animatingView) {
+    viewT += dt / viewDur;
+    if (viewT >= 1) { viewT = 1; animatingView = false; }
+    const e = viewT * viewT * (3 - 2 * viewT);
+    camera.position.lerpVectors(viewFrom, viewTo, e);
+    camera.quaternion.slerpQuaternions(viewQFrom, viewQTo, e);
+    ctrl.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    return;
+  }
+
+  const spd = ctrl.speed * (ctrl.boost ? 3 : 1) * dt;
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+
+  if (ctrl.fwd) ctrl.vel.addScaledVector(dir, spd);
+  if (ctrl.back) ctrl.vel.addScaledVector(dir, -spd);
+  if (ctrl.right) ctrl.vel.addScaledVector(right, spd);
+  if (ctrl.left) ctrl.vel.addScaledVector(right, -spd);
+  if (ctrl.up) ctrl.vel.y += spd;
+  if (ctrl.down) ctrl.vel.y -= spd;
+
+  // Clamp per-frame displacement to prevent tunneling through geometry
+  const maxStep = 10;
+  if (ctrl.vel.length() > maxStep) ctrl.vel.setLength(maxStep);
+
+  camera.position.add(ctrl.vel);
+  ctrl.vel.multiplyScalar(ctrl.damping);
+
+  // Collision: bridge deck
+  const pz = camera.position.z, px = camera.position.x, py = camera.position.y;
+  if (pz > -B.sideSpan && pz < B.mainSpan + B.sideSpan && Math.abs(px) < B.deckW / 2 + 3) {
+    if (py > B.deckH - 6 && py < B.deckH + 3) {
+      camera.position.y = B.deckH + 3;
+      ctrl.vel.y = Math.max(0, ctrl.vel.y);
+    } else if (py < B.deckH - 6 && py > B.deckH - 12) {
+      camera.position.y = B.deckH - 12;
+      ctrl.vel.y = Math.min(0, ctrl.vel.y);
+    }
+  }
+  // Collision: tower legs (actual leg volumes, not full-width slab)
+  const colSpacing = B.deckW / 2 + 2;
+  const legHW = 5, legHD = 4; // half-width/depth of collision volume per leg
+  for (const tz of [0, B.mainSpan]) {
+    for (const side of [-1, 1]) {
+      const legX = side * colSpacing;
+      const dx = Math.abs(px - legX), dz = Math.abs(pz - tz);
+      if (dx < legHW && dz < legHD && py < B.towerH + 5) {
+        // Push out along smallest penetration axis
+        const penX = legHW - dx, penZ = legHD - dz;
+        if (penX < penZ) {
+          camera.position.x = legX + Math.sign(px - legX) * legHW;
+          ctrl.vel.x = 0;
+        } else {
+          camera.position.z = tz + Math.sign(pz - tz) * legHD;
+          ctrl.vel.z = 0;
+        }
+      }
+    }
+  }
+  // Collision: terrain
+  const tH = terrainH(px, pz);
+  if (py < tH + 3) { camera.position.y = tH + 3; ctrl.vel.y = Math.max(0, ctrl.vel.y); }
+  // Water floor
+  if (camera.position.y < 2) { camera.position.y = 2; ctrl.vel.y = 0; }
+
+  // HUD update
+  document.getElementById('hud-speed').textContent = Math.round(ctrl.speed * (ctrl.boost ? 3 : 1));
+  document.getElementById('hud-alt').textContent = Math.round(camera.position.y);
+  document.getElementById('hud-pos').textContent = `${Math.round(camera.position.x)}, ${Math.round(camera.position.z)}`;
+}
+
+/* Viewpoints */
+let animatingView = false, viewT = 0, viewDur = 2;
+const viewFrom = new THREE.Vector3(), viewTo = new THREE.Vector3();
+const viewQFrom = new THREE.Quaternion(), viewQTo = new THREE.Quaternion();
+
+const VIEWPOINTS = {
+  1: { name: 'CLASSIC VIEW', pos: [-500, 140, -400], look: [0, 90, 640] },
+  2: { name: 'TOWER TOP', pos: [25, 240, 10], look: [0, 80, 640] },
+  3: { name: 'UNDER THE BRIDGE', pos: [0, 20, 640], look: [50, 60, 900] },
+  4: { name: 'ROAD LEVEL', pos: [3, 72, -200], look: [3, 70, 600] },
+  5: { name: 'BAY PANORAMA', pos: [1100, 150, 300], look: [-100, 60, 640] },
+  6: { name: 'AERIAL', pos: [-200, 380, 200], look: [0, 50, 800] },
+};
+
+function goToViewpoint(n) {
+  const vp = VIEWPOINTS[n];
+  if (!vp) return;
+  autoFly = false;
+
+  viewFrom.copy(camera.position);
+  viewQFrom.copy(camera.quaternion);
+  viewTo.set(...vp.pos);
+
+  const tmpCam = new THREE.Object3D();
+  tmpCam.position.set(...vp.pos);
+  tmpCam.lookAt(...vp.look);
+  viewQTo.copy(tmpCam.quaternion);
+
+  viewT = 0; viewDur = 2.5; animatingView = true;
+
+  // Show label
+  const label = document.getElementById('viewpoint-label');
+  label.textContent = vp.name;
+  label.style.opacity = '1';
+  setTimeout(() => label.style.opacity = '0', 2000);
+}
+
+let fogEnabled = true;
+function toggleFog() {
+  fogEnabled = !fogEnabled;
+  scene.fog = fogEnabled ? new THREE.FogExp2(0xc8bfaa, 0.00008) : null;
+}
+
+/* =========================================================
+   MINIMAP
+   ========================================================= */
+let minimapCtx, minimapBg;
+const MAP_W = 100, MAP_H = 100;
+const MAP_MIN_X = -1800, MAP_MAX_X = 2200;
+const MAP_MIN_Z = -2200, MAP_MAX_Z = 3800;
+
+function initMinimap() {
+  const el = document.getElementById('minimap');
+  if (!el) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = MAP_W; canvas.height = MAP_H;
+  el.appendChild(canvas);
+  minimapCtx = canvas.getContext('2d');
+
+  // Pre-render terrain to ImageData (sampled at reduced resolution)
+  const img = minimapCtx.createImageData(MAP_W, MAP_H);
+  const d = img.data;
+  for (let py = 0; py < MAP_H; py++) {
+    for (let px = 0; px < MAP_W; px++) {
+      const wx = MAP_MIN_X + (px / MAP_W) * (MAP_MAX_X - MAP_MIN_X);
+      const wz = MAP_MAX_Z - (py / MAP_H) * (MAP_MAX_Z - MAP_MIN_Z);
+      const h = terrainH(wx, wz);
+      const i = (py * MAP_W + px) * 4;
+      if (h > 2) {
+        const elev = Math.min(1, h / 200);
+        d[i]     = (60 + elev * 80) | 0;
+        d[i + 1] = (90 + elev * 40) | 0;
+        d[i + 2] = (40 + elev * 30) | 0;
+      } else {
+        d[i] = 10; d[i + 1] = 35 + (py & 1); d[i + 2] = 55;
+      }
+      d[i + 3] = 255;
+    }
+  }
+  minimapCtx.putImageData(img, 0, 0);
+
+  // Draw bridge line
+  minimapCtx.strokeStyle = '#c04530';
+  minimapCtx.lineWidth = 2;
+  const bx = (0 - MAP_MIN_X) / (MAP_MAX_X - MAP_MIN_X) * MAP_W;
+  const bz1 = (1 - (-B.sideSpan - MAP_MIN_Z) / (MAP_MAX_Z - MAP_MIN_Z)) * MAP_H;
+  const bz2 = (1 - (B.mainSpan + B.sideSpan - MAP_MIN_Z) / (MAP_MAX_Z - MAP_MIN_Z)) * MAP_H;
+  minimapCtx.beginPath();
+  minimapCtx.moveTo(bx, bz1);
+  minimapCtx.lineTo(bx, bz2);
+  minimapCtx.stroke();
+
+  // Tower markers
+  minimapCtx.fillStyle = '#c04530';
+  for (const tz of [0, B.mainSpan]) {
+    const ty = (1 - (tz - MAP_MIN_Z) / (MAP_MAX_Z - MAP_MIN_Z)) * MAP_H;
+    minimapCtx.fillRect(bx - 2, ty - 1, 5, 3);
+  }
+
+  // Save background
+  minimapBg = minimapCtx.getImageData(0, 0, MAP_W, MAP_H);
+}
+
+function updateMinimap() {
+  minimapCtx.putImageData(minimapBg, 0, 0);
+  const cx = ((camera.position.x - MAP_MIN_X) / (MAP_MAX_X - MAP_MIN_X)) * MAP_W;
+  const cy = (1 - (camera.position.z - MAP_MIN_Z) / (MAP_MAX_Z - MAP_MIN_Z)) * MAP_H;
+
+  // Camera direction indicator
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  minimapCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+  minimapCtx.lineWidth = 1;
+  minimapCtx.beginPath();
+  minimapCtx.moveTo(cx, cy);
+  minimapCtx.lineTo(cx + dir.x * 12, cy - dir.z * 12);
+  minimapCtx.stroke();
+
+  // Camera dot
+  minimapCtx.fillStyle = '#ffffff';
+  minimapCtx.beginPath();
+  minimapCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+  minimapCtx.fill();
+  minimapCtx.strokeStyle = '#ffffff';
+  minimapCtx.lineWidth = 1;
+  minimapCtx.beginPath();
+  minimapCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+  minimapCtx.stroke();
+}
+
+/* =========================================================
+   SEAGULLS
+   ========================================================= */
+const NUM_BIRDS = 20;
+let birdMesh;
+const birdData = [];
+
+function createSeagulls() {
+  // V-shaped seagull silhouette (two flat triangles)
+  const wingL = new THREE.BufferGeometry();
+  wingL.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    0, 0, 0, -1.5, 0.15, 0.25, -0.3, 0, 0.7
+  ]), 3));
+  const wingR = new THREE.BufferGeometry();
+  wingR.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    0, 0, 0, 1.5, 0.15, 0.25, 0.3, 0, 0.7
+  ]), 3));
+  const birdGeo = mergeGeometries([wingL, wingR]);
+  birdGeo.computeVertexNormals();
+  const birdMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.8, side: THREE.DoubleSide });
+  birdMesh = new THREE.InstancedMesh(birdGeo, birdMat, NUM_BIRDS);
+
+  const rng = (s) => { let x = Math.sin(s) * 43758.5453; return x - Math.floor(x); };
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    birdData.push({
+      cx: -150 + rng(i * 7.1) * 500,
+      cz: -100 + rng(i * 3.3) * 1500,
+      radius: 25 + rng(i * 11.7) * 70,
+      height: 75 + rng(i * 5.9) * 160,
+      speed: 0.25 + rng(i * 9.1) * 0.4,
+      phase: rng(i * 2.1) * Math.PI * 2,
+      flapSpeed: 3 + rng(i * 4.4) * 2,
+    });
+  }
+  scene.add(birdMesh);
+}
+
+const _bm = new THREE.Matrix4();
+const _bp = new THREE.Vector3();
+const _bq = new THREE.Quaternion();
+const _bs = new THREE.Vector3(1, 1, 1);
+const _be = new THREE.Euler();
+
+function updateSeagulls(elapsed) {
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    const bd = birdData[i];
+    const angle = elapsed * bd.speed + bd.phase;
+    _bp.set(
+      bd.cx + Math.cos(angle) * bd.radius,
+      bd.height + Math.sin(elapsed * 0.5 + bd.phase) * 5,
+      bd.cz + Math.sin(angle) * bd.radius
+    );
+    const flap = Math.sin(elapsed * bd.flapSpeed + bd.phase) * 0.25;
+    _be.set(flap, -angle - Math.PI / 2, 0.15);
+    _bq.setFromEuler(_be);
+    _bm.compose(_bp, _bq, _bs);
+    birdMesh.setMatrixAt(i, _bm);
+  }
+  birdMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================
+   POST-PROCESSING
+   ========================================================= */
+// Golden-hour color grading + vignette
+const ColorGradeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      // Warm golden-hour grade: boost reds/yellows, cool shadows
+      c.r *= 1.08; c.g *= 1.02; c.b *= 0.94;
+      // Slight contrast boost
+      c.rgb = (c.rgb - 0.5) * 1.08 + 0.5;
+      // Vignette
+      vec2 uv = vUv * 2.0 - 1.0;
+      float vig = 1.0 - dot(uv * 0.4, uv * 0.4);
+      c.rgb *= smoothstep(0.0, 1.0, vig);
+      gl_FragColor = c;
+    }`
+};
+
+function setupPostProcessing() {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(innerWidth, innerHeight),
+    0.3, 0.5, 0.85
+  );
+  composer.addPass(bloom);
+  composer.addPass(new ShaderPass(ColorGradeShader));
+  composer.addPass(new OutputPass());
+}
+
+/* =========================================================
+   ANIMATION LOOP
+   ========================================================= */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const elapsed = clock.getElapsedTime();
+
+  if (water && water.material && water.material.uniforms && water.material.uniforms['time']) {
+    water.material.uniforms['time'].value = elapsed * 0.4;
+  }
+
+  updateControls(dt);
+  updateTraffic(dt);
+  if (birdMesh) updateSeagulls(elapsed);
+
+  // Fog bank drift animation
+  if (window._fogMeshes) {
+    for (const fm of window._fogMeshes) {
+      fm.position.x = fm.userData.baseX + Math.sin(elapsed * 0.02 * fm.userData.driftSpeed + fm.userData.phase) * 150;
+      fm.position.z = fm.userData.baseZ + Math.cos(elapsed * 0.015 * fm.userData.driftSpeed + fm.userData.phase) * 80;
+    }
+  }
+
+  // Boat bobbing animation
+  if (window._boatGroups) {
+    for (const b of window._boatGroups) {
+      b.position.y = Math.sin(elapsed * 0.8 + b.userData.phase) * 0.4;
+      b.rotation.x = Math.sin(elapsed * 0.6 + b.userData.phase + 1) * 0.02;
+      b.rotation.z = Math.sin(elapsed * 0.5 + b.userData.phase + 2) * 0.015;
+    }
+  }
+
+  if (minimapCtx) updateMinimap();
+
+  composer.render();
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init() {
+  const prog = document.getElementById('prog');
+  prog.style.width = '10%';
+
+  initScene();
+  prog.style.width = '20%';
+
+  createMaterials();
+  createSky();
+  prog.style.width = '30%';
+
+  createWater();
+  prog.style.width = '45%';
+
+  updateSun(12, 235);
+  createLighting();
+  prog.style.width = '55%';
+
+  createBridge();
+  prog.style.width = '70%';
+
+  createTerrain();
+  prog.style.width = '80%';
+
+  createCityscape();
+  createTraffic();
+  createSeagulls();
+  prog.style.width = '90%';
+
+  setupControls();
+  setupPostProcessing();
+  initMinimap();
+  prog.style.width = '100%';
+
+  // Hide loading
+  setTimeout(() => {
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 1500);
+  }, 500);
+
+  // Handle resize
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+    composer.setSize(innerWidth, innerHeight);
+  });
+
+  // Expose for debugging / Playwright testing
+  window._ggb = { camera, scene, ctrl, goToViewpoint, VIEWPOINTS,
+    setCamera(x, y, z, lx, ly, lz) {
+      autoFly = false; animatingView = false;
+      camera.position.set(x, y, z);
+      camera.lookAt(lx, ly, lz);
+      ctrl.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    }
+  };
+
+  animate();
+}
+
+init();
+</script>
+</body>
+</html>

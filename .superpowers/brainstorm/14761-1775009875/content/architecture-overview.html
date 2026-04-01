@@ -1,0 +1,150 @@
+<h2>System Architecture Overview</h2>
+<p class="subtitle">하이브리드 아키텍처 — 전체 시스템 구성도</p>
+
+<div class="mockup">
+  <div class="mockup-header">Architecture Diagram</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 900 620" style="width:100%;font-family:monospace">
+      <!-- Title -->
+      <text x="450" y="30" text-anchor="middle" fill="#c04530" font-size="16" font-weight="bold">SF Open World — Hybrid Architecture</text>
+
+      <!-- Engine Core Layer -->
+      <rect x="30" y="50" width="840" height="80" rx="8" fill="rgba(192,69,48,0.15)" stroke="#c04530" stroke-width="1.5"/>
+      <text x="50" y="72" fill="#c04530" font-size="13" font-weight="bold">ENGINE CORE</text>
+      <rect x="50" y="80" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="110" y="103" text-anchor="middle" fill="#ddd" font-size="11">GameLoop</text>
+      <rect x="185" y="80" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="245" y="103" text-anchor="middle" fill="#ddd" font-size="11">SceneManager</text>
+      <rect x="320" y="80" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="380" y="103" text-anchor="middle" fill="#ddd" font-size="11">AssetLoader</text>
+      <rect x="455" y="80" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="515" y="103" text-anchor="middle" fill="#ddd" font-size="11">Renderer (Three)</text>
+      <rect x="590" y="80" width="130" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="655" y="103" text-anchor="middle" fill="#ddd" font-size="11">PostFX Pipeline</text>
+      <rect x="735" y="80" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="795" y="103" text-anchor="middle" fill="#ddd" font-size="11">InputManager</text>
+
+      <!-- World Layer -->
+      <rect x="30" y="150" width="410" height="130" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="50" y="172" fill="#4CAF50" font-size="13" font-weight="bold">WORLD (청크 기반)</text>
+      <rect x="50" y="182" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="105" y="205" text-anchor="middle" fill="#ddd" font-size="11">ChunkManager</text>
+      <rect x="175" y="182" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="230" y="205" text-anchor="middle" fill="#ddd" font-size="11">LODController</text>
+      <rect x="300" y="182" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="360" y="205" text-anchor="middle" fill="#ddd" font-size="11">TerrainGenerator</text>
+      <rect x="50" y="230" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="105" y="253" text-anchor="middle" fill="#ddd" font-size="11">Water</text>
+      <rect x="175" y="230" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="230" y="253" text-anchor="middle" fill="#ddd" font-size="11">RoadNetwork</text>
+      <rect x="300" y="230" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="360" y="253" text-anchor="middle" fill="#ddd" font-size="11">VegetationSystem</text>
+
+      <!-- Atmosphere Layer -->
+      <rect x="460" y="150" width="410" height="130" rx="8" fill="rgba(255,152,0,0.1)" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="480" y="172" fill="#FF9800" font-size="13" font-weight="bold">ATMOSPHERE (환경)</text>
+      <rect x="480" y="182" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="535" y="205" text-anchor="middle" fill="#ddd" font-size="11">TimeOfDay</text>
+      <rect x="605" y="182" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="660" y="205" text-anchor="middle" fill="#ddd" font-size="11">WeatherSystem</text>
+      <rect x="730" y="182" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="790" y="205" text-anchor="middle" fill="#ddd" font-size="11">SkyController</text>
+      <rect x="480" y="230" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="535" y="253" text-anchor="middle" fill="#ddd" font-size="11">FogSystem</text>
+      <rect x="605" y="230" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="660" y="253" text-anchor="middle" fill="#ddd" font-size="11">LightingRig</text>
+      <rect x="730" y="230" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="790" y="253" text-anchor="middle" fill="#ddd" font-size="11">MaterialUpdater</text>
+
+      <!-- Landmarks (Class-based) -->
+      <rect x="30" y="300" width="270" height="130" rx="8" fill="rgba(33,150,243,0.1)" stroke="#2196F3" stroke-width="1.5"/>
+      <text x="50" y="322" fill="#2196F3" font-size="13" font-weight="bold">LANDMARKS (클래스)</text>
+      <rect x="50" y="332" width="100" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="100" y="352" text-anchor="middle" fill="#ddd" font-size="10">GoldenGate</text>
+      <rect x="165" y="332" width="115" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="222" y="352" text-anchor="middle" fill="#ddd" font-size="10">TransamericaPyramid</text>
+      <rect x="50" y="374" width="100" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="100" y="394" text-anchor="middle" fill="#ddd" font-size="10">CoitTower</text>
+      <rect x="165" y="374" width="115" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="222" y="394" text-anchor="middle" fill="#ddd" font-size="10">Alcatraz</text>
+
+      <!-- City (Procedural + Instanced) -->
+      <rect x="315" y="300" width="270" height="130" rx="8" fill="rgba(156,39,176,0.1)" stroke="#9C27B0" stroke-width="1.5"/>
+      <text x="335" y="322" fill="#9C27B0" font-size="13" font-weight="bold">CITY (절차적 생성)</text>
+      <rect x="335" y="332" width="105" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="387" y="352" text-anchor="middle" fill="#ddd" font-size="10">BuildingFactory</text>
+      <rect x="455" y="332" width="110" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="510" y="352" text-anchor="middle" fill="#ddd" font-size="10">InstancedPool</text>
+      <rect x="335" y="374" width="105" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="387" y="394" text-anchor="middle" fill="#ddd" font-size="10">BlockGenerator</text>
+      <rect x="455" y="374" width="110" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="510" y="394" text-anchor="middle" fill="#ddd" font-size="10">StreetFurniture</text>
+
+      <!-- Traffic ECS -->
+      <rect x="600" y="300" width="270" height="130" rx="8" fill="rgba(255,235,59,0.1)" stroke="#FDD835" stroke-width="1.5"/>
+      <text x="620" y="322" fill="#FDD835" font-size="13" font-weight="bold">TRAFFIC (경량 ECS)</text>
+      <rect x="620" y="332" width="100" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="670" y="352" text-anchor="middle" fill="#ddd" font-size="10">VehicleSystem</text>
+      <rect x="735" y="332" width="115" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="792" y="352" text-anchor="middle" fill="#ddd" font-size="10">PedestrianSystem</text>
+      <rect x="620" y="374" width="100" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="670" y="394" text-anchor="middle" fill="#ddd" font-size="10">BoatSystem</text>
+      <rect x="735" y="374" width="115" height="32" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="792" y="394" text-anchor="middle" fill="#ddd" font-size="10">BirdSystem</text>
+
+      <!-- Camera Layer -->
+      <rect x="30" y="450" width="410" height="80" rx="8" fill="rgba(0,188,212,0.1)" stroke="#00BCD4" stroke-width="1.5"/>
+      <text x="50" y="472" fill="#00BCD4" font-size="13" font-weight="bold">CAMERA & CINEMATIC</text>
+      <rect x="50" y="482" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="105" y="505" text-anchor="middle" fill="#ddd" font-size="11">FlightCamera</text>
+      <rect x="175" y="482" width="120" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="235" y="505" text-anchor="middle" fill="#ddd" font-size="11">CinematicDirector</text>
+      <rect x="310" y="482" width="110" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="365" y="505" text-anchor="middle" fill="#ddd" font-size="11">CameraEffects</text>
+
+      <!-- UI Layer -->
+      <rect x="460" y="450" width="410" height="80" rx="8" fill="rgba(158,158,158,0.1)" stroke="#9E9E9E" stroke-width="1.5"/>
+      <text x="480" y="472" fill="#9E9E9E" font-size="13" font-weight="bold">UI (Vanilla DOM)</text>
+      <rect x="480" y="482" width="100" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="530" y="505" text-anchor="middle" fill="#ddd" font-size="11">HUD</text>
+      <rect x="595" y="482" width="100" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="645" y="505" text-anchor="middle" fill="#ddd" font-size="11">Minimap</text>
+      <rect x="710" y="482" width="140" height="36" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)"/>
+      <text x="780" y="505" text-anchor="middle" fill="#ddd" font-size="11">LoadingScreen</text>
+
+      <!-- Arrows: Atmosphere → Materials -->
+      <line x1="660" y1="268" x2="510" y2="300" stroke="#FF9800" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+      <line x1="660" y1="268" x2="387" y2="300" stroke="#FF9800" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+      <line x1="660" y1="268" x2="165" y2="300" stroke="#FF9800" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+      <text x="350" y="290" fill="#FF9800" font-size="9" opacity="0.7">MaterialUpdater가 모든 재질의 emissive/color를 시간대에 맞게 갱신</text>
+
+      <!-- Legend -->
+      <rect x="30" y="555" width="840" height="55" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"/>
+      <circle cx="60" cy="580" r="6" fill="#c04530"/>
+      <text x="75" y="584" fill="#999" font-size="11">Engine Core</text>
+      <circle cx="190" cy="580" r="6" fill="#4CAF50"/>
+      <text x="205" y="584" fill="#999" font-size="11">World</text>
+      <circle cx="280" cy="580" r="6" fill="#FF9800"/>
+      <text x="295" y="584" fill="#999" font-size="11">Atmosphere</text>
+      <circle cx="400" cy="580" r="6" fill="#2196F3"/>
+      <text x="415" y="584" fill="#999" font-size="11">Landmarks (Class)</text>
+      <circle cx="540" cy="580" r="6" fill="#9C27B0"/>
+      <text x="555" y="584" fill="#999" font-size="11">City (Procedural)</text>
+      <circle cx="680" cy="580" r="6" fill="#FDD835"/>
+      <text x="695" y="584" fill="#999" font-size="11">Traffic (ECS)</text>
+      <circle cx="800" cy="580" r="6" fill="#00BCD4"/>
+      <text x="815" y="584" fill="#999" font-size="11">Camera</text>
+    </svg>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;padding:16px;background:rgba(255,255,255,0.03);border-radius:8px">
+  <h3 style="margin:0 0 12px;color:#c04530">Data Flow</h3>
+  <div style="font-size:13px;color:#bbb;line-height:2">
+    <div><span style="color:#c04530">GameLoop</span> → tick(dt) → <span style="color:#4CAF50">ChunkManager</span>.update(cameraPos) → load/unload chunks</div>
+    <div><span style="color:#c04530">GameLoop</span> → tick(dt) → <span style="color:#FF9800">TimeOfDay</span>.advance(dt) → <span style="color:#FF9800">MaterialUpdater</span>.apply(sunAngle, weatherState)</div>
+    <div><span style="color:#c04530">GameLoop</span> → tick(dt) → <span style="color:#FDD835">VehicleSystem</span>.update(dt) → InstancedMesh batch update</div>
+    <div><span style="color:#c04530">GameLoop</span> → tick(dt) → <span style="color:#00BCD4">CameraEffects</span>.update(velocity, altitude) → PostFX params</div>
+    <div><span style="color:#c04530">Renderer</span> → render() → <span style="color:#c04530">PostFX Pipeline</span> (Bloom → DoF → MotionBlur → ColorGrade → Film Grain)</div>
+  </div>
+</div>

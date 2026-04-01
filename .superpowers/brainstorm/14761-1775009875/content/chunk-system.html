@@ -1,0 +1,154 @@
+<h2>Chunk System & City Generation</h2>
+<p class="subtitle">8km 반경 샌프란시스코를 브라우저에서 실시간 렌더링하는 핵심 전략</p>
+
+<!-- Chunk Grid Visualization -->
+<div class="mockup">
+  <div class="mockup-header">Chunk Grid — 카메라 중심 동적 로딩</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 860 480" style="width:100%;font-family:monospace">
+      <!-- Grid -->
+      <defs>
+        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+          <rect width="60" height="60" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect x="30" y="40" width="540" height="420" fill="url(#grid)" rx="4"/>
+
+      <!-- LOD zones (concentric) -->
+      <!-- LOD 0: Near (full detail) -->
+      <rect x="180" y="160" width="240" height="180" rx="6" fill="rgba(76,175,80,0.15)" stroke="#4CAF50" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- LOD 1: Medium -->
+      <rect x="120" y="100" width="360" height="300" rx="6" fill="rgba(255,152,0,0.08)" stroke="#FF9800" stroke-width="1" stroke-dasharray="4,3"/>
+      <!-- LOD 2: Far -->
+      <rect x="60" y="55" width="480" height="390" rx="6" fill="rgba(244,67,54,0.05)" stroke="#f44336" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Loaded chunks (LOD 0 - green) -->
+      <rect x="181" y="161" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="241" y="161" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="301" y="161" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="361" y="161" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="181" y="221" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="241" y="221" width="58" height="58" fill="rgba(76,175,80,0.35)" stroke="#4CAF50" stroke-width="2" rx="2"/>
+      <rect x="301" y="221" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="361" y="221" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="181" y="281" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="241" y="281" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="301" y="281" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+      <rect x="361" y="281" width="58" height="58" fill="rgba(76,175,80,0.3)" stroke="#4CAF50" stroke-width="1" rx="2"/>
+
+      <!-- LOD 1 chunks (orange) -->
+      <rect x="121" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="181" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="241" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="301" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="361" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="421" y="101" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="121" y="161" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="421" y="161" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="121" y="221" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="421" y="221" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="121" y="281" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="421" y="281" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="121" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="181" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="241" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="301" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="361" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+      <rect x="421" y="341" width="58" height="58" fill="rgba(255,152,0,0.15)" stroke="#FF9800" stroke-width="0.7" rx="2"/>
+
+      <!-- Camera icon -->
+      <circle cx="270" cy="250" r="8" fill="#fff" opacity="0.9"/>
+      <circle cx="270" cy="250" r="12" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.4"/>
+      <text x="270" y="254" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">C</text>
+
+      <!-- Labels on grid -->
+      <text x="300" y="195" text-anchor="middle" fill="#4CAF50" font-size="10" opacity="0.8">LOD 0: Full Detail</text>
+      <text x="300" y="90" text-anchor="middle" fill="#FF9800" font-size="10" opacity="0.8">LOD 1: Simplified</text>
+      <text x="300" y="52" text-anchor="middle" fill="#f44336" font-size="10" opacity="0.8">LOD 2: Billboard / Box</text>
+
+      <!-- Right panel: Specs -->
+      <rect x="600" y="40" width="240" height="420" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)"/>
+      <text x="620" y="70" fill="#c04530" font-size="14" font-weight="bold">Chunk Specs</text>
+
+      <text x="620" y="100" fill="#888" font-size="11">Chunk Size</text>
+      <text x="620" y="118" fill="#ddd" font-size="13">500m x 500m</text>
+
+      <text x="620" y="148" fill="#888" font-size="11">Grid Coverage</text>
+      <text x="620" y="166" fill="#ddd" font-size="13">16 x 16 = 256 chunks</text>
+      <text x="620" y="182" fill="#666" font-size="10">(8km x 8km total area)</text>
+
+      <text x="620" y="212" fill="#888" font-size="11">LOD 0 (Full Detail)</text>
+      <text x="620" y="230" fill="#4CAF50" font-size="13">3x3 = 9 chunks active</text>
+      <text x="620" y="246" fill="#666" font-size="10">개별 건물, 도로 텍스처, 가구</text>
+
+      <text x="620" y="276" fill="#888" font-size="11">LOD 1 (Simplified)</text>
+      <text x="620" y="294" fill="#FF9800" font-size="13">5x5 - 3x3 = 16 chunks</text>
+      <text x="620" y="310" fill="#666" font-size="10">건물 합체, 도로 단순화, 가구 없음</text>
+
+      <text x="620" y="340" fill="#888" font-size="11">LOD 2 (Billboard)</text>
+      <text x="620" y="358" fill="#f44336" font-size="13">나머지 ~231 chunks</text>
+      <text x="620" y="374" fill="#666" font-size="10">스카이라인 실루엣만, 단색 블록</text>
+
+      <line x1="620" y1="392" x2="820" y2="392" stroke="rgba(255,255,255,0.1)"/>
+      <text x="620" y="415" fill="#888" font-size="11">Max Draw Calls (est.)</text>
+      <text x="620" y="433" fill="#ddd" font-size="13">~200 (InstancedMesh 병합)</text>
+      <text x="620" y="449" fill="#666" font-size="10">개별 건물이 아닌 타입별 풀링</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Building Generation Strategy -->
+<div class="section" style="margin-top:20px">
+  <h3 style="color:#9C27B0;margin-bottom:12px">City Generation Strategy</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;border:1px solid rgba(156,39,176,0.2)">
+      <h4 style="color:#CE93D8;margin:0 0 8px;font-size:13px">Building Types (절차적)</h4>
+      <div style="font-size:12px;color:#bbb;line-height:1.8">
+        <div><span style="color:#9C27B0">Highrise</span> — 30~250m, 유리 커튼월, 다운타운</div>
+        <div><span style="color:#9C27B0">MidRise</span> — 10~30m, 콘크리트/벽돌, 상업지역</div>
+        <div><span style="color:#9C27B0">Victorian</span> — 8~15m, 베이윈도우, 주거지역</div>
+        <div><span style="color:#9C27B0">Industrial</span> — 5~15m, 창고형, 항만/SoMa</div>
+        <div><span style="color:#9C27B0">Wharf</span> — 5~10m, 목재 구조, 피셔맨스워프</div>
+        <div style="margin-top:8px;color:#888;font-size:11px">
+          각 타입은 BuildingFactory의 파라미터로 생성.<br/>
+          같은 타입 건물은 InstancedMesh로 병합 → 1 draw call.
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;border:1px solid rgba(156,39,176,0.2)">
+      <h4 style="color:#CE93D8;margin:0 0 8px;font-size:13px">Zone Map (구역별 건물 분포)</h4>
+      <div style="font-size:12px;color:#bbb;line-height:1.8">
+        <div><span style="color:#2196F3">Financial District</span> — Highrise 밀집</div>
+        <div><span style="color:#4CAF50">Marina / Pacific Heights</span> — Victorian 밀집</div>
+        <div><span style="color:#FF9800">SoMa / Mission</span> — MidRise + Industrial 혼합</div>
+        <div><span style="color:#00BCD4">Fisherman's Wharf</span> — Wharf + 관광시설</div>
+        <div><span style="color:#9C27B0">Sunset / Richmond</span> — 저층 주택 반복</div>
+        <div style="margin-top:8px;color:#888;font-size:11px">
+          구역 정보는 좌표 기반 함수로 결정.<br/>
+          현재 terrainH()와 같은 방식의 zoneAt(x,z) 함수.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chunk Lifecycle -->
+<div class="section" style="margin-top:20px;padding:16px;background:rgba(76,175,80,0.06);border-radius:8px;border:1px solid rgba(76,175,80,0.15)">
+  <h3 style="color:#4CAF50;margin:0 0 12px">Chunk Lifecycle</h3>
+  <div style="font-family:monospace;font-size:12px;color:#bbb;line-height:2.2">
+    <div><span style="color:#4CAF50;font-weight:bold">1. IDLE</span> → 카메라가 접근하면 → <span style="color:#FF9800;font-weight:bold">2. LOADING</span></div>
+    <div>&nbsp;&nbsp;&nbsp;• 지형 메시 생성 (즉시, CPU)</div>
+    <div>&nbsp;&nbsp;&nbsp;• 건물 배치 계산 (시드 기반 결정론적)</div>
+    <div>&nbsp;&nbsp;&nbsp;• InstancedMesh에 행렬 추가</div>
+    <div><span style="color:#FF9800;font-weight:bold">2. LOADING</span> → 완료 시 → <span style="color:#2196F3;font-weight:bold">3. ACTIVE</span></div>
+    <div>&nbsp;&nbsp;&nbsp;• LOD 레벨에 따라 디테일 조정</div>
+    <div>&nbsp;&nbsp;&nbsp;• LOD 0: 개별 건물 형상, 창문 텍스처, 가로등</div>
+    <div>&nbsp;&nbsp;&nbsp;• LOD 1: 건물 실루엣만, 텍스처 단순화</div>
+    <div>&nbsp;&nbsp;&nbsp;• LOD 2: 높이만 반영한 단색 박스</div>
+    <div><span style="color:#2196F3;font-weight:bold">3. ACTIVE</span> → 카메라가 멀어지면 → <span style="color:#f44336;font-weight:bold">4. UNLOADING</span></div>
+    <div>&nbsp;&nbsp;&nbsp;• 메시 dispose(), 행렬 풀에서 제거</div>
+    <div>&nbsp;&nbsp;&nbsp;• 히스테리시스: 로드 거리보다 20% 더 먼 곳에서 언로드 (깜빡임 방지)</div>
+  </div>
+</div>

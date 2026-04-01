@@ -1,0 +1,86 @@
+<h2>Architecture Approach</h2>
+<p class="subtitle">Three.js + TypeScript 기반 샌프란시스코 오픈월드 아키텍처 3가지 접근법</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Layered Module (레이어드 모듈)</h3>
+      <p style="margin-bottom:12px">현재 코드를 <strong>기능별 모듈</strong>로 분리. 클래식 레이어 아키텍처.</p>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;font-family:monospace;font-size:13px;line-height:1.8">
+        <div style="color:#c04530;font-weight:bold">src/</div>
+        <div>&nbsp;&nbsp;core/ <span style="color:#888">← 렌더러, 씬, 카메라, 루프</span></div>
+        <div>&nbsp;&nbsp;world/ <span style="color:#888">← 지형, 물, 하늘, 청크로더</span></div>
+        <div>&nbsp;&nbsp;landmarks/ <span style="color:#888">← 금문교, 트랜스아메리카 등</span></div>
+        <div>&nbsp;&nbsp;city/ <span style="color:#888">← 절차적 건물, 도로, 나무</span></div>
+        <div>&nbsp;&nbsp;vehicles/ <span style="color:#888">← 차량, 보트, 갈매기</span></div>
+        <div>&nbsp;&nbsp;camera/ <span style="color:#888">← 비행 컨트롤, 시네마틱 경로</span></div>
+        <div>&nbsp;&nbsp;atmosphere/ <span style="color:#888">← 낮밤, 날씨, 포스트프로세싱</span></div>
+        <div>&nbsp;&nbsp;ui/ <span style="color:#888">← HUD, 미니맵, 로딩</span></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="pros-cons" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="pros"><h4 style="color:#4CAF50;margin:0 0 4px">Pros</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>현재 코드에서 자연스럽게 전환</li><li>이해하기 쉬운 구조</li><li>각 모듈 독립적으로 개발/테스트</li></ul></div>
+          <div class="cons"><h4 style="color:#f44336;margin:0 0 4px">Cons</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>모듈 간 의존성이 복잡해질 수 있음</li><li>수천 엔티티 관리시 성능 병목</li><li>날씨↔재질 등 크로스커팅 관심사 처리 어려움</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>ECS + Systems (엔티티 컴포넌트 시스템)</h3>
+      <p style="margin-bottom:12px"><strong>bitECS</strong> 기반 데이터 지향 설계. 모든 오브젝트가 엔티티+컴포넌트.</p>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;font-family:monospace;font-size:13px;line-height:1.8">
+        <div style="color:#c04530;font-weight:bold">src/</div>
+        <div>&nbsp;&nbsp;ecs/ <span style="color:#888">← World, 엔티티 생성, 쿼리</span></div>
+        <div>&nbsp;&nbsp;components/ <span style="color:#888">← Position, Mesh, Weather, LOD...</span></div>
+        <div>&nbsp;&nbsp;systems/ <span style="color:#888">← RenderSystem, ChunkSystem, WeatherSystem...</span></div>
+        <div>&nbsp;&nbsp;archetypes/ <span style="color:#888">← Building, Vehicle, Landmark 템플릿</span></div>
+        <div>&nbsp;&nbsp;assets/ <span style="color:#888">← 절차적 생성기, 재질 팩토리</span></div>
+        <div>&nbsp;&nbsp;renderer/ <span style="color:#888">← Three.js 래퍼, 포스트프로세싱</span></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="pros-cons" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="pros"><h4 style="color:#4CAF50;margin:0 0 4px">Pros</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>수만 엔티티도 효율적 처리</li><li>날씨→재질 등 크로스커팅이 시스템으로 자연스럽게 해결</li><li>프로파일링/최적화 용이</li></ul></div>
+          <div class="cons"><h4 style="color:#f44336;margin:0 0 4px">Cons</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>학습 곡선 높음 (bitECS 패러다임)</li><li>현재 코드 대부분 재작성 필요</li><li>단순한 작업도 ECS 패턴 강제</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid (하이브리드) — 추천</h3>
+      <p style="margin-bottom:12px">레이어드 모듈 기반 + <strong>대량 엔티티만 ECS</strong>. 실용적 타협안.</p>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;font-family:monospace;font-size:13px;line-height:1.8">
+        <div style="color:#c04530;font-weight:bold">src/</div>
+        <div>&nbsp;&nbsp;engine/ <span style="color:#888">← 게임 루프, 씬 매니저, 에셋 로더</span></div>
+        <div>&nbsp;&nbsp;world/ <span style="color:#888">← ChunkManager, LODController, 지형</span></div>
+        <div>&nbsp;&nbsp;landmarks/ <span style="color:#888">← 클래스 기반 (Bridge, Pyramid...)</span></div>
+        <div>&nbsp;&nbsp;city/ <span style="color:#888">← 절차적 건물 (InstancedMesh 풀링)</span></div>
+        <div>&nbsp;&nbsp;traffic/ <span style="color:#888">← ECS로 차량/보트/새 대량 관리</span></div>
+        <div>&nbsp;&nbsp;atmosphere/ <span style="color:#888">← TimeOfDay, Weather, PostFX 파이프라인</span></div>
+        <div>&nbsp;&nbsp;camera/ <span style="color:#888">← FlightCamera, CinematicPath, PostFX</span></div>
+        <div>&nbsp;&nbsp;ui/ <span style="color:#888">← HUD, Minimap (Preact/Solid 경량 UI)</span></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="pros-cons" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="pros"><h4 style="color:#4CAF50;margin:0 0 4px">Pros</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>현재 코드 70%+ 재활용 가능</li><li>랜드마크는 직관적 클래스, 대량 엔티티만 ECS</li><li>점진적 마이그레이션 가능</li><li>필요한 곳에만 복잡도 추가</li></ul></div>
+          <div class="cons"><h4 style="color:#f44336;margin:0 0 4px">Cons</h4><ul style="margin:0;padding-left:16px;font-size:13px"><li>두 패러다임 공존 (클래스 + ECS)</li><li>경계선 판단이 필요 (언제 ECS? 언제 클래스?)</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:rgba(192,69,48,0.08);border-radius:8px;border:1px solid rgba(192,69,48,0.2)">
+  <h3 style="color:#c04530;margin:0 0 8px">Why C (Hybrid)?</h3>
+  <p style="font-size:14px;margin:0;color:#ccc">
+    포트폴리오 데모에서 풀 ECS는 오버엔지니어링입니다. 금문교 같은 랜드마크는 한 번 만들면 끝이라 ECS의 이점이 없고,
+    오히려 클래스로 캡슐화하는 게 코드 가독성이 좋습니다. 반면 수천 대의 차량, 보행자, 건물 창문 불빛은
+    InstancedMesh + 경량 ECS가 성능에 결정적입니다. <strong>복잡도는 필요한 곳에만.</strong>
+  </p>
+</div>

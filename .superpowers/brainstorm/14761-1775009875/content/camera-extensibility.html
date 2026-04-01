@@ -1,0 +1,174 @@
+<h2>Camera & Cinematic + Extensibility</h2>
+<p class="subtitle">시네마틱 카메라 시스템 + 지속적 확장을 위한 플러그인 아키텍처</p>
+
+<!-- Camera System -->
+<div class="mockup">
+  <div class="mockup-header">Camera System — 3 Modes</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 860 280" style="width:100%;font-family:monospace">
+      <!-- CameraDirector (central) -->
+      <rect x="310" y="10" width="240" height="50" rx="8" fill="rgba(0,188,212,0.2)" stroke="#00BCD4" stroke-width="2"/>
+      <text x="430" y="40" text-anchor="middle" fill="#00BCD4" font-size="14" font-weight="bold">CameraDirector</text>
+
+      <!-- Arrows down -->
+      <line x1="330" y1="60" x2="130" y2="90" stroke="#00BCD4" stroke-width="1" opacity="0.5"/>
+      <line x1="430" y1="60" x2="430" y2="90" stroke="#00BCD4" stroke-width="1" opacity="0.5"/>
+      <line x1="530" y1="60" x2="730" y2="90" stroke="#00BCD4" stroke-width="1" opacity="0.5"/>
+
+      <!-- Mode 1: Free Flight -->
+      <rect x="30" y="90" width="240" height="170" rx="8" fill="rgba(76,175,80,0.1)" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="150" y="115" text-anchor="middle" fill="#4CAF50" font-size="13" font-weight="bold">Free Flight</text>
+      <text x="150" y="132" text-anchor="middle" fill="#888" font-size="10">현재 코드의 비행 컨트롤 발전형</text>
+      <rect x="50" y="145" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="150" y="161" text-anchor="middle" fill="#aaa" font-size="10">WASD + Mouse + Scroll Speed</text>
+      <rect x="50" y="175" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="150" y="191" text-anchor="middle" fill="#aaa" font-size="10">Inertia + Damping (현재 0.90)</text>
+      <rect x="50" y="205" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="150" y="221" text-anchor="middle" fill="#aaa" font-size="10">Altitude-based speed scaling</text>
+      <text x="150" y="248" text-anchor="middle" fill="#4CAF50" font-size="10">고도 높을수록 빠르게 → 자연스러운 스케일감</text>
+
+      <!-- Mode 2: Cinematic Path -->
+      <rect x="310" y="90" width="240" height="170" rx="8" fill="rgba(255,152,0,0.1)" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="430" y="115" text-anchor="middle" fill="#FF9800" font-size="13" font-weight="bold">Cinematic Path</text>
+      <text x="430" y="132" text-anchor="middle" fill="#888" font-size="10">사전 정의된 드론 투어 경로</text>
+      <rect x="330" y="145" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="430" y="161" text-anchor="middle" fill="#aaa" font-size="10">CatmullRomCurve3 스플라인</text>
+      <rect x="330" y="175" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="430" y="191" text-anchor="middle" fill="#aaa" font-size="10">Ease-in/out 속도 곡선</text>
+      <rect x="330" y="205" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="430" y="221" text-anchor="middle" fill="#aaa" font-size="10">Look-at target 자동 추적</text>
+      <text x="430" y="248" text-anchor="middle" fill="#FF9800" font-size="10">JSON으로 경로 정의 → 새 경로 추가 용이</text>
+
+      <!-- Mode 3: Orbit -->
+      <rect x="590" y="90" width="240" height="170" rx="8" fill="rgba(156,39,176,0.1)" stroke="#9C27B0" stroke-width="1.5"/>
+      <text x="710" y="115" text-anchor="middle" fill="#9C27B0" font-size="13" font-weight="bold">Orbit Viewpoint</text>
+      <text x="710" y="132" text-anchor="middle" fill="#888" font-size="10">랜드마크 중심 공전 카메라</text>
+      <rect x="610" y="145" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="710" y="161" text-anchor="middle" fill="#aaa" font-size="10">현재 autoFly 발전형</text>
+      <rect x="610" y="175" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="710" y="191" text-anchor="middle" fill="#aaa" font-size="10">대상 랜드마크 선택 (1~9 키)</text>
+      <rect x="610" y="205" width="200" height="24" rx="4" fill="rgba(255,255,255,0.04)"/>
+      <text x="710" y="221" text-anchor="middle" fill="#aaa" font-size="10">반경 + 고도 + 속도 조절</text>
+      <text x="710" y="248" text-anchor="middle" fill="#9C27B0" font-size="10">스크린세이버/전시용으로 적합</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Camera Effects -->
+<div class="section" style="margin-top:20px;padding:16px;background:rgba(0,188,212,0.06);border-radius:8px;border:1px solid rgba(0,188,212,0.15)">
+  <h3 style="color:#00BCD4;margin:0 0 12px">CameraEffects — 속도/고도 반응형</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12px;color:#bbb">
+    <div>
+      <div style="color:#00BCD4;font-weight:bold;margin-bottom:6px">속도 기반 효과</div>
+      <div style="line-height:1.8">
+        <div>• <span style="color:#fff">Motion Blur</span>: speed > 30m/s → 강도 비례</div>
+        <div>• <span style="color:#fff">FOV 변화</span>: boost 시 60° → 75° (속도감)</div>
+        <div>• <span style="color:#fff">Chromatic Aberration</span>: 초고속 시 미세하게</div>
+      </div>
+    </div>
+    <div>
+      <div style="color:#00BCD4;font-weight:bold;margin-bottom:6px">고도 기반 효과</div>
+      <div style="line-height:1.8">
+        <div>• <span style="color:#fff">DoF</span>: 저고도(< 50m) 에서 얕은 심도</div>
+        <div>• <span style="color:#fff">Fog falloff</span>: 고고도에서 안개 위로 올라감</div>
+        <div>• <span style="color:#fff">Color temp</span>: 고고도에서 차가운 톤</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Extensibility Architecture -->
+<div class="mockup" style="margin-top:24px">
+  <div class="mockup-header">Extensibility — 지속적 확장을 위한 Registry 패턴</div>
+  <div class="mockup-body" style="padding:24px;background:#0a0a0a">
+    <svg viewBox="0 0 860 320" style="width:100%;font-family:monospace">
+      <!-- Central Registry -->
+      <rect x="300" y="10" width="260" height="60" rx="8" fill="rgba(192,69,48,0.2)" stroke="#c04530" stroke-width="2"/>
+      <text x="430" y="35" text-anchor="middle" fill="#c04530" font-size="14" font-weight="bold">GameWorld (Registry)</text>
+      <text x="430" y="52" text-anchor="middle" fill="#888" font-size="10">모든 시스템과 엔티티의 중앙 등록소</text>
+
+      <!-- Registration arrows -->
+      <line x1="430" y1="70" x2="130" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <line x1="430" y1="70" x2="330" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <line x1="430" y1="70" x2="530" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <line x1="430" y1="70" x2="730" y2="100" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+      <!-- Registries -->
+      <rect x="30" y="100" width="200" height="90" rx="6" fill="rgba(33,150,243,0.1)" stroke="#2196F3" stroke-width="1"/>
+      <text x="130" y="120" text-anchor="middle" fill="#2196F3" font-size="12" font-weight="bold">LandmarkRegistry</text>
+      <text x="130" y="140" text-anchor="middle" fill="#888" font-size="10">.register('golden-gate', GGB)</text>
+      <text x="130" y="155" text-anchor="middle" fill="#888" font-size="10">.register('pyramid', TAP)</text>
+      <text x="130" y="170" text-anchor="middle" fill="#888" font-size="10">.register('coit-tower', CT)</text>
+      <text x="130" y="185" text-anchor="middle" fill="#2196F3" font-size="9">새 랜드마크 = 클래스 + register()</text>
+
+      <rect x="250" y="100" width="170" height="90" rx="6" fill="rgba(156,39,176,0.1)" stroke="#9C27B0" stroke-width="1"/>
+      <text x="335" y="120" text-anchor="middle" fill="#9C27B0" font-size="12" font-weight="bold">BuildingRegistry</text>
+      <text x="335" y="140" text-anchor="middle" fill="#888" font-size="10">.register('highrise', fn)</text>
+      <text x="335" y="155" text-anchor="middle" fill="#888" font-size="10">.register('victorian', fn)</text>
+      <text x="335" y="170" text-anchor="middle" fill="#888" font-size="10">.register('wharf', fn)</text>
+      <text x="335" y="185" text-anchor="middle" fill="#9C27B0" font-size="9">새 건물타입 = factory fn + register()</text>
+
+      <rect x="440" y="100" width="180" height="90" rx="6" fill="rgba(76,175,80,0.1)" stroke="#4CAF50" stroke-width="1"/>
+      <text x="530" y="120" text-anchor="middle" fill="#4CAF50" font-size="12" font-weight="bold">ZoneRegistry</text>
+      <text x="530" y="140" text-anchor="middle" fill="#888" font-size="10">.register('financial', cfg)</text>
+      <text x="530" y="155" text-anchor="middle" fill="#888" font-size="10">.register('marina', cfg)</text>
+      <text x="530" y="170" text-anchor="middle" fill="#888" font-size="10">.register('sunset', cfg)</text>
+      <text x="530" y="185" text-anchor="middle" fill="#4CAF50" font-size="9">새 구역 = JSON config + register()</text>
+
+      <rect x="640" y="100" width="190" height="90" rx="6" fill="rgba(255,152,0,0.1)" stroke="#FF9800" stroke-width="1"/>
+      <text x="735" y="120" text-anchor="middle" fill="#FF9800" font-size="12" font-weight="bold">WeatherRegistry</text>
+      <text x="735" y="140" text-anchor="middle" fill="#888" font-size="10">.register('clear', params)</text>
+      <text x="735" y="155" text-anchor="middle" fill="#888" font-size="10">.register('fog', params)</text>
+      <text x="735" y="170" text-anchor="middle" fill="#888" font-size="10">.register('rain', params)</text>
+      <text x="735" y="185" text-anchor="middle" fill="#FF9800" font-size="9">새 날씨 = params + register()</text>
+
+      <!-- How to extend -->
+      <rect x="30" y="210" width="800" height="100" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"/>
+      <text x="50" y="235" fill="#c04530" font-size="13" font-weight="bold">확장하는 방법 (예: 새 랜드마크 추가)</text>
+      <text x="50" y="258" fill="#4CAF50" font-size="12">1.</text>
+      <text x="70" y="258" fill="#bbb" font-size="12">src/landmarks/bay-bridge.ts 생성 — BaseLandmark 상속, build() 구현</text>
+      <text x="50" y="278" fill="#4CAF50" font-size="12">2.</text>
+      <text x="70" y="278" fill="#bbb" font-size="12">src/landmarks/index.ts 에서 registry.register('bay-bridge', BayBridge) 추가</text>
+      <text x="50" y="298" fill="#4CAF50" font-size="12">3.</text>
+      <text x="70" y="298" fill="#bbb" font-size="12">끝. ChunkManager가 해당 좌표 청크 로드 시 자동으로 배치, MaterialUpdater가 자동으로 시간대 반영.</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Cinematic Path Format -->
+<div class="section" style="margin-top:20px;padding:16px;background:rgba(255,152,0,0.06);border-radius:8px;border:1px solid rgba(255,152,0,0.15)">
+  <h3 style="color:#FF9800;margin:0 0 12px">Cinematic Path — JSON 포맷</h3>
+  <div style="background:#111;border-radius:6px;padding:16px;font-family:'SF Mono',monospace;font-size:11px;color:#bbb;line-height:1.7;overflow-x:auto">
+    <div style="color:#666">// src/camera/paths/golden-gate-sunrise.json</div>
+    <div>{</div>
+    <div>&nbsp;&nbsp;<span style="color:#c04530">"name"</span>: <span style="color:#e8a060">"Golden Gate Sunrise"</span>,</div>
+    <div>&nbsp;&nbsp;<span style="color:#c04530">"duration"</span>: <span style="color:#4CAF50">45</span>,&nbsp;&nbsp;<span style="color:#666">// seconds</span></div>
+    <div>&nbsp;&nbsp;<span style="color:#c04530">"timeOfDay"</span>: <span style="color:#e8a060">"06:15"</span>,&nbsp;&nbsp;<span style="color:#666">// 자동으로 시간 설정</span></div>
+    <div>&nbsp;&nbsp;<span style="color:#c04530">"weather"</span>: <span style="color:#e8a060">"fog"</span>,</div>
+    <div>&nbsp;&nbsp;<span style="color:#c04530">"points"</span>: [</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;{ <span style="color:#c04530">"pos"</span>: [-800, 50, -500], <span style="color:#c04530">"lookAt"</span>: [0, 90, 640], <span style="color:#c04530">"fov"</span>: 55 },</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;{ <span style="color:#c04530">"pos"</span>: [-200, 80, 0], <span style="color:#c04530">"lookAt"</span>: [0, 120, 640] },</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;{ <span style="color:#c04530">"pos"</span>: [0, 72, 640], <span style="color:#c04530">"lookAt"</span>: [0, 227, 1280], <span style="color:#c04530">"fov"</span>: 40 },</div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;{ <span style="color:#c04530">"pos"</span>: [100, 250, 1400], <span style="color:#c04530">"lookAt"</span>: [0, 80, 640], <span style="color:#c04530">"fov"</span>: 65 }</div>
+    <div>&nbsp;&nbsp;]</div>
+    <div>}</div>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#888">
+    새 시네마틱 경로 추가 = JSON 파일 하나 작성. CinematicDirector가 자동 로드.
+  </div>
+</div>
+
+<!-- Tech Stack Summary -->
+<div class="section" style="margin-top:24px;padding:20px;background:rgba(192,69,48,0.08);border-radius:8px;border:1px solid rgba(192,69,48,0.2)">
+  <h3 style="color:#c04530;margin:0 0 16px">Final Tech Stack</h3>
+  <div style="display:grid;grid-template-columns:140px 1fr;gap:8px 16px;font-size:12px">
+    <div style="color:#c04530;font-weight:bold">Build</div><div style="color:#bbb">Vite 6 + TypeScript 5.x</div>
+    <div style="color:#c04530;font-weight:bold">Rendering</div><div style="color:#bbb">Three.js r170+ (ES modules)</div>
+    <div style="color:#c04530;font-weight:bold">PostFX</div><div style="color:#bbb">Three.js EffectComposer + custom shaders</div>
+    <div style="color:#c04530;font-weight:bold">ECS (traffic)</div><div style="color:#bbb">miniplex (경량, TS 네이티브) or 자체 구현</div>
+    <div style="color:#c04530;font-weight:bold">Noise</div><div style="color:#bbb">현재 fbm 유지 + simplex-noise 패키지</div>
+    <div style="color:#c04530;font-weight:bold">State</div><div style="color:#bbb">단순 싱글톤 (Zustand 불필요 — UI 프레임워크 없음)</div>
+    <div style="color:#c04530;font-weight:bold">UI</div><div style="color:#bbb">Vanilla DOM (현재 방식 유지)</div>
+    <div style="color:#c04530;font-weight:bold">Linting</div><div style="color:#bbb">ESLint + Prettier</div>
+  </div>
+</div>
