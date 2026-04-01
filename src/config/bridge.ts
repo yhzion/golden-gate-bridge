@@ -86,3 +86,31 @@ export const APPROACH = {
   viaductColW: 1.5,
   viaductColD: 2.0,
 } as const;
+
+export const TILE = {
+  /** Length of one repeatable tile: mainSpan + sideSpan */
+  length: BRIDGE.mainSpan + BRIDGE.sideSpan,  // 1623m
+  /** Tower Z positions within a tile (relative to tile start) */
+  towerZs: [0, BRIDGE.sideSpan, BRIDGE.sideSpan + BRIDGE.mainSpan],  // [0, 343, 1623]
+  /** Number of active full-detail tiles */
+  activeTiles: 3,
+  /** Number of LOD towers beyond active tiles (each direction) */
+  lodTowerCount: 4,
+  /** Distance at which LOD towers fade to invisible */
+  lodFadeEnd: 6500,
+  /** World recentering threshold */
+  recenterThreshold: 5000,
+} as const;
+
+export const DRIVE = {
+  /** Player speed in m/s (~90 km/h) */
+  speed: 25,
+  /** Player lane index (right lane 2, 0-indexed) */
+  laneIdx: 4,  // LANES[4] = 3.75
+  /** Camera height above road for 1st person */
+  eyeH: 1.2,
+  /** 3rd person camera offset behind car */
+  thirdPersonBack: 5,
+  /** 3rd person camera offset above car */
+  thirdPersonUp: 2,
+} as const;
