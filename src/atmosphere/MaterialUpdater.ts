@@ -112,6 +112,9 @@ export class MaterialUpdater {
       this.scene.fog.color.copy(time.fogColor);
     }
 
+    // Exposure
+    this.sm.renderer.toneMappingExposure = time.exposure;
+
     // Night factor: 0 = full day, 1 = full night
     const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
 
@@ -121,12 +124,8 @@ export class MaterialUpdater {
     // Update cached materials
     for (const entry of this.cached) {
       if (entry.isLight) {
-        // Street lanterns: amber glow at night (like real GGB HPS 250W amber lamps)
-        entry.mat.emissiveIntensity = THREE.MathUtils.lerp(
-          entry.baseEmissiveIntensity * 0.1,
-          entry.baseEmissiveIntensity * 2.5,
-          nightFactor,
-        );
+        // Off during day, base intensity at night (clamped to LDR)
+        entry.mat.emissiveIntensity = nightFactor * Math.min(entry.baseEmissiveIntensity, 0.9);
       }
 
       // Aviation beacons are now controlled by SafetyLights strobe system
