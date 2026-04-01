@@ -8,8 +8,6 @@ import type { SceneManager } from '@/engine/SceneManager';
 interface CachedMaterial {
   mat: THREE.MeshStandardMaterial;
   baseEmissiveIntensity: number;
-  /** Ratio relative to timeState.envMapIntensity (e.g. bridge=1.0, cable=0.75) */
-  envMapRatio: number;
   isLight: boolean;
   isAviation: boolean;
 }
@@ -24,7 +22,6 @@ export class MaterialUpdater {
   private ambientLight: THREE.AmbientLight | null = null;
   private cached: CachedMaterial[] = [];
   private cacheBuilt = false;
-  private envUpdateTimer = 0;
 
   constructor(
     sm: SceneManager,
@@ -39,6 +36,9 @@ export class MaterialUpdater {
     this.sky = sky;
     this.sunLight = sunLight;
     this.hemisphereLight = hemisphereLight;
+
+    // Disable HDR environment map — use direct lighting only
+    this.scene.environment = null;
 
     sm.scene.traverse((obj) => {
       if (obj instanceof THREE.AmbientLight) {
@@ -63,16 +63,12 @@ export class MaterialUpdater {
       const isAviation = hasEmissive && mat.emissive.r > 0.8 && mat.emissive.g < 0.2; // red
       const isLight = hasEmissive && !isAviation; // amber lanterns, headlights
 
-      // Compute envMap ratio from original baseEnvMapIntensity
-      // Bridge steel was 0.4, cable was 0.3 → ratios 1.0 and 0.75
-      // Materials without envMap have intensity 0 or 1 (default) — ratio stays as-is
-      const baseEnv = mat.envMapIntensity ?? 1;
-      const envMapRatio = baseEnv > 0 ? baseEnv / 0.4 : 0;
+      // Zero out envMap — no HDR environment reflections
+      mat.envMapIntensity = 0;
 
       this.cached.push({
         mat,
         baseEmissiveIntensity: mat.emissiveIntensity,
-        envMapRatio,
         isLight,
         isAviation,
       });
@@ -87,22 +83,11 @@ export class MaterialUpdater {
     const theta = THREE.MathUtils.degToRad(time.sunAzimuth);
     const sunDir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
 
-    // Sky uniforms
+    // Sky uniforms (visual sky dome only, not used for lighting)
     const skyU = this.sky.material.uniforms;
     skyU['sunPosition'].value.copy(sunDir);
     skyU['turbidity'].value = time.turbidity;
     skyU['rayleigh'].value = time.rayleigh;
-
-    // Regenerate environment map every ~2 seconds so reflections match current sky
-    this.envUpdateTimer += dt;
-    if (this.envUpdateTimer > 2.0) {
-      this.envUpdateTimer = 0;
-      if (this.sm.envTarget) this.sm.envTarget.dispose();
-      this.sm.sceneEnv.add(this.sky);
-      this.sm.envTarget = this.sm.pmremGen.fromScene(this.sm.sceneEnv);
-      this.scene.add(this.sky);
-      this.scene.environment = this.sm.envTarget.texture;
-    }
 
     // Sun light
     this.sunLight.color.copy(time.sunColor);
@@ -127,17 +112,11 @@ export class MaterialUpdater {
       this.scene.fog.color.copy(time.fogColor);
     }
 
-    // Exposure
-    this.sm.renderer.toneMappingExposure = time.exposure;
-
     // Night factor: 0 = full day, 1 = full night
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.8, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
 
     // Update cached materials
     for (const entry of this.cached) {
-      // EnvMap intensity from TimeOfDay keyframes (replaces old nightFactor-based logic)
-      entry.mat.envMapIntensity = time.envMapIntensity * entry.envMapRatio;
-
       if (entry.isLight) {
         // Street lanterns: amber glow at night (like real GGB HPS 250W amber lamps)
         entry.mat.emissiveIntensity = THREE.MathUtils.lerp(

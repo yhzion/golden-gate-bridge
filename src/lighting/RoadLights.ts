@@ -42,7 +42,7 @@ export class RoadLights {
   }
 
   update(dt: number, time: TimeState, tier: Tier, cameraPos: THREE.Vector3): void {
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.8, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
     const lightFactor = THREE.MathUtils.smoothstep(nightFactor, 0.2, 0.5);
 
     if (lightFactor < 0.01) {

@@ -109,7 +109,7 @@ export class PostFXPipeline {
   updateLighting(timeState: TimeState, weatherState: WeatherState): void {
     if (!this.lightingManager) return;
 
-    const nightFactor = 1 - THREE.MathUtils.clamp(timeState.sunIntensity / 0.8, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(timeState.sunIntensity / 0.25, 0, 1);
     const tier = this.lightingManager.qualityTier.getCurrentTier();
 
     const fogActive = weatherState.fogMultiplier > 2;

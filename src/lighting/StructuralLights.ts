@@ -51,7 +51,7 @@ export class StructuralLights {
   }
 
   update(dt: number, time: TimeState, tier: Tier): void {
-    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.8, 0, 1);
+    const nightFactor = 1 - THREE.MathUtils.clamp(time.sunIntensity / 0.25, 0, 1);
     const lightFactor = THREE.MathUtils.smoothstep(nightFactor, 0.3, 0.6);
 
     const spotIntensity = lightFactor * 1.5;
